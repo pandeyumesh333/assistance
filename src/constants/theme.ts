@@ -94,9 +94,7 @@ export const Shadows = {
   },
 };
 
-export const API_URL = __DEV__
-  ? 'http://172.27.176.111:5001/api'
-  : 'https://your-app.onrender.com/api';
+export const API_URL = 'https://assistance-q9p8.onrender.com/api';
 
 export const CATEGORIES = [
   'Food',

@@ -14,6 +14,8 @@ import { useAuthStore } from '../../stores/authStore';
 import { useTaskStore } from '../../stores/taskStore';
 import { useMeetingStore } from '../../stores/meetingStore';
 import { useFinanceStore } from '../../stores/financeStore';
+import { syncRecentSMS } from '../../services/smsListener';
+import { Platform } from 'react-native';
 import { getGreeting, formatCurrency, formatTime } from '../../utils/helpers';
 import {
   Colors,
@@ -63,16 +65,21 @@ export const DashboardScreen = ({ navigation }: any) => {
       fetchBalance(),
       fetchTransactions(),
     ]);
-  }, []);
+
+    // Auto-sync SMS on Android
+    if (Platform.OS === 'android') {
+      syncRecentSMS();
+    }
+  }, [fetchTasks, fetchMeetings, fetchBalance, fetchTransactions]);
 
   useEffect(() => {
     loadData();
     Animated.timing(fadeAnim, {
       toValue: 1,
-      duration: 600,
+      duration: 1000,
       useNativeDriver: true,
     }).start();
-  }, []);
+  }, [loadData, fadeAnim]);
 
   const onRefresh = async () => {
     setRefreshing(true);

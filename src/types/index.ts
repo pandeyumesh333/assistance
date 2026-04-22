@@ -39,6 +39,7 @@ export interface Transaction {
   merchant: string;
   source: 'manual' | 'sms';
   timestamp: string;
+  rawSms?: string;
 }
 
 export interface Account {
@@ -98,4 +99,5 @@ export interface CreateTransactionInput {
   merchant?: string;
   source?: 'manual' | 'sms';
   timestamp?: string;
+  rawSms?: string;
 }

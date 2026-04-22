@@ -40,7 +40,7 @@ const MERCHANT_PATTERNS = [
  * Parse a bank SMS message to extract transaction details
  * Only works on Android platform
  */
-export const parseBankSMS = (smsBody: string): ParsedTransaction | null => {
+export const parseSMS = (smsBody: string): (ParsedTransaction & { category: string }) | null => {
   if (Platform.OS !== 'android') return null;
 
   // Try each pattern to find amount and type
@@ -64,6 +64,7 @@ export const parseBankSMS = (smsBody: string): ParsedTransaction | null => {
         amount,
         type: pattern.type,
         merchant: merchant || 'Unknown',
+        category: 'Transfer', // Default category for SMS
         timestamp: new Date(),
       };
     }
