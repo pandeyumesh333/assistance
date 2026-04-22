@@ -1,7 +1,4 @@
-import { Expo } from 'expo-server-sdk';
 import { Notification } from '../models/Notification';
-
-const expo = new Expo();
 
 export const sendPushNotification = async (
   userId: string,
@@ -19,24 +16,30 @@ export const sendPushNotification = async (
       type,
     });
 
-    // 2. Send push notification if token exists and is valid
-    if (pushToken && Expo.isExpoPushToken(pushToken)) {
-      const messages = [
-        {
-          to: pushToken,
-          sound: 'default' as const,
-          title,
-          body,
-          data: { type },
-        },
-      ];
+    // 2. Send push notification if token exists
+    if (pushToken) {
+      // Use dynamic import for ESM module compatibility
+      const { Expo } = await import('expo-server-sdk');
+      const expo = new Expo();
 
-      const chunks = expo.chunkPushNotifications(messages);
-      for (const chunk of chunks) {
-        try {
-          await expo.sendPushNotificationsAsync(chunk);
-        } catch (error) {
-          console.error('Error sending push notification chunk:', error);
+      if (Expo.isExpoPushToken(pushToken)) {
+        const messages = [
+          {
+            to: pushToken,
+            sound: 'default' as const,
+            title,
+            body,
+            data: { type },
+          },
+        ];
+
+        const chunks = expo.chunkPushNotifications(messages);
+        for (const chunk of chunks) {
+          try {
+            await expo.sendPushNotificationsAsync(chunk);
+          } catch (error) {
+            console.error('Error sending push notification chunk:', error);
+          }
         }
       }
     }

@@ -24,8 +24,9 @@ export const useMeetingStore = create<MeetingState>((set, get) => ({
     try {
       set({ isLoading: true, error: null });
       const { data } = await meetingAPI.getAll();
-      set({ meetings: data.meetings || [], isLoading: false });
-      await AsyncStorage.setItem('cached_meetings', JSON.stringify(data.meetings));
+      const meetings = Array.isArray(data) ? data : (data.meetings || []);
+      set({ meetings, isLoading: false });
+      await AsyncStorage.setItem('cached_meetings', JSON.stringify(meetings));
     } catch (error: any) {
       set({ error: 'Failed to fetch meetings', isLoading: false });
       await get().loadCached();
@@ -36,11 +37,10 @@ export const useMeetingStore = create<MeetingState>((set, get) => ({
     try {
       set({ error: null });
       const { data } = await meetingAPI.create(input);
-      set({
-        meetings: [data.meeting, ...get().meetings].sort((a, b) =>
-          new Date(a.time).getTime() - new Date(b.time).getTime()
-        )
-      });
+      const newMeeting = data.meeting || data;
+      set({ meetings: [newMeeting, ...get().meetings].sort((a, b) =>
+        new Date(a.time).getTime() - new Date(b.time).getTime()
+      )});
     } catch (error: any) {
       set({ error: 'Failed to create meeting' });
       throw error;
@@ -51,8 +51,9 @@ export const useMeetingStore = create<MeetingState>((set, get) => ({
     try {
       set({ error: null });
       const { data } = await meetingAPI.update(id, updates);
+      const updatedMeeting = data.meeting || data;
       set({
-        meetings: get().meetings.map((m) => (m._id === id ? data.meeting : m)),
+        meetings: get().meetings.map((m) => (m._id === id ? updatedMeeting : m)),
       });
     } catch (error: any) {
       set({ error: 'Failed to update meeting' });
@@ -77,6 +78,6 @@ export const useMeetingStore = create<MeetingState>((set, get) => ({
       if (cached) {
         set({ meetings: JSON.parse(cached), isLoading: false });
       }
-    } catch (error) { }
+    } catch (error) {}
   },
 }));
