@@ -66,7 +66,7 @@ export const meetingAPI = {
 
 // Transaction endpoints
 export const transactionAPI = {
-  getAll: (params?: { type?: string; category?: string; limit?: number }) =>
+  getAll: (params?: { type?: string; category?: string; limit?: number; page?: number }) =>
     api.get('/transactions', { params }),
   create: (data: any) => api.post('/transactions', data),
   getBalance: () => api.get('/transactions/balance'),
@@ -76,8 +76,8 @@ export const transactionAPI = {
 // Account endpoints
 export const accountAPI = {
   get: () => api.get('/accounts'),
-  updateBalance: (openingBalance: number) =>
-    api.put('/accounts', { openingBalance }),
+  updateBalance: (amount: number) =>
+    api.put('/accounts/opening-balance', { amount }),
 };
 
 // Notification endpoints

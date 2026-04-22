@@ -7,6 +7,9 @@ import {
   TouchableOpacity,
   RefreshControl,
   Platform,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,9 +30,20 @@ import {
 } from '../../constants/theme';
 
 export const FinanceScreen = ({ navigation }: any) => {
-  const { transactions, balance, fetchTransactions, fetchBalance, isLoading } =
-    useFinanceStore();
+  const { 
+    transactions, 
+    balance, 
+    fetchTransactions, 
+    fetchMoreTransactions, 
+    fetchBalance, 
+    updateOpeningBalance, 
+    isLoading,
+    isLoadingMore,
+    hasMore 
+  } = useFinanceStore();
   const [refreshing, setRefreshing] = useState(false);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [openingBalanceInput, setOpeningBalanceInput] = useState('');
 
   useEffect(() => {
     fetchTransactions();
@@ -40,6 +54,19 @@ export const FinanceScreen = ({ navigation }: any) => {
     setRefreshing(true);
     await Promise.all([fetchTransactions(), fetchBalance()]);
     setRefreshing(false);
+  };
+
+  const handleSetOpeningBalance = () => {
+    setOpeningBalanceInput(balance?.openingBalance?.toString() || '0');
+    setIsModalVisible(true);
+  };
+
+  const saveOpeningBalance = async () => {
+    const amount = parseFloat(openingBalanceInput || '0');
+    if (!isNaN(amount)) {
+      await updateOpeningBalance(amount);
+      setIsModalVisible(false);
+    }
   };
 
   const renderTransaction = ({ item }: { item: Transaction }) => (
@@ -114,10 +141,19 @@ export const FinanceScreen = ({ navigation }: any) => {
             tintColor={Colors.primary}
           />
         }
+        onEndReached={() => fetchMoreTransactions()}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          isLoadingMore ? (
+            <View style={styles.footerLoader}>
+              <RefreshControl refreshing={true} tintColor={Colors.primary} />
+            </View>
+          ) : null
+        }
         ListHeaderComponent={
           <>
             {/* Balance Card */}
-            <Card style={styles.balanceCard} variant="elevated">
+            <Card style={styles.balanceCard} variant="elevated" onPress={handleSetOpeningBalance}>
               <Text style={styles.balanceLabel}>Current Balance</Text>
               <Text style={styles.balanceAmount}>
                 {balance ? formatCurrency(balance.currentBalance) : '₹0'}
@@ -196,6 +232,47 @@ export const FinanceScreen = ({ navigation }: any) => {
           />
         }
       />
+
+      <Modal
+        visible={isModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
+          <Card style={styles.modalContent} variant="elevated">
+            <Text style={styles.modalTitle}>Set Opening Balance</Text>
+            <Text style={styles.modalSubtitle}>
+              Enter your current total balance across all accounts to start tracking.
+            </Text>
+            <TextInput
+              style={styles.input}
+              placeholder="0.00"
+              value={openingBalanceInput}
+              onChangeText={setOpeningBalanceInput}
+              keyboardType="numeric"
+              autoFocus
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setIsModalVisible(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.saveButton]}
+                onPress={saveOpeningBalance}
+              >
+                <Text style={styles.saveButtonText}>Save Balance</Text>
+              </TouchableOpacity>
+            </View>
+          </Card>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -358,5 +435,64 @@ const styles = StyleSheet.create({
     fontSize: FontSizes.xs,
     color: Colors.textTertiary,
     marginTop: 2,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    padding: Spacing.lg,
+  },
+  modalContent: {
+    padding: Spacing.xl,
+  },
+  modalTitle: {
+    fontSize: FontSizes.lg,
+    fontWeight: FontWeights.bold,
+    color: Colors.textPrimary,
+    marginBottom: Spacing.xs,
+  },
+  modalSubtitle: {
+    fontSize: FontSizes.sm,
+    color: Colors.textSecondary,
+    marginBottom: Spacing.lg,
+    lineHeight: 20,
+  },
+  input: {
+    backgroundColor: Colors.borderLight,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    fontSize: FontSizes.xl,
+    fontWeight: FontWeights.semibold,
+    color: Colors.textPrimary,
+    marginBottom: Spacing.xl,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+  },
+  modalButton: {
+    flex: 1,
+    height: 48,
+    borderRadius: BorderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelButton: {
+    backgroundColor: Colors.borderLight,
+  },
+  saveButton: {
+    backgroundColor: Colors.primary,
+  },
+  cancelButtonText: {
+    color: Colors.textSecondary,
+    fontWeight: FontWeights.semibold,
+  },
+  saveButtonText: {
+    color: Colors.textInverse,
+    fontWeight: FontWeights.semibold,
+  },
+  footerLoader: {
+    paddingVertical: Spacing.xl,
+    alignItems: 'center',
   },
 });

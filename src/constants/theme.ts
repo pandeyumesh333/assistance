@@ -95,7 +95,7 @@ export const Shadows = {
 };
 
 export const API_URL = __DEV__
-  ? 'http://192.168.1.100:5000/api'
+  ? 'http://172.27.176.111:5001/api'
   : 'https://your-app.onrender.com/api';
 
 export const CATEGORIES = [

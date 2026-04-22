@@ -32,27 +32,27 @@ export const DashboardScreen = ({ navigation }: any) => {
   const [refreshing, setRefreshing] = useState(false);
   const fadeAnim = useState(new Animated.Value(0))[0];
 
-  const pendingTasks = tasks.filter((t) => !t.completed);
+  const pendingTasks = (tasks || []).filter((t) => !t.completed);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
 
-  const todayMeetings = meetings.filter((m) => {
+  const todayMeetings = (meetings || []).filter((m) => {
     const mt = new Date(m.time);
     return mt >= today && mt < tomorrow;
   });
 
   const yesterdayStart = new Date(today);
   yesterdayStart.setDate(yesterdayStart.getDate() - 1);
-  const yesterdayExpenses = transactions
+  const yesterdayExpenses = (transactions || [])
     .filter((t) => {
       const ts = new Date(t.timestamp);
       return t.type === 'debit' && ts >= yesterdayStart && ts < today;
     })
     .reduce((sum, t) => sum + t.amount, 0);
 
-  const latestExpense = transactions
+  const latestExpense = (transactions || [])
     .filter((t) => t.type === 'debit')
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
 

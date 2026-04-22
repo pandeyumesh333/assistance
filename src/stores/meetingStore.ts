@@ -24,7 +24,7 @@ export const useMeetingStore = create<MeetingState>((set, get) => ({
     try {
       set({ isLoading: true, error: null });
       const { data } = await meetingAPI.getAll();
-      set({ meetings: data.meetings, isLoading: false });
+      set({ meetings: data.meetings || [], isLoading: false });
       await AsyncStorage.setItem('cached_meetings', JSON.stringify(data.meetings));
     } catch (error: any) {
       set({ error: 'Failed to fetch meetings', isLoading: false });
@@ -36,9 +36,11 @@ export const useMeetingStore = create<MeetingState>((set, get) => ({
     try {
       set({ error: null });
       const { data } = await meetingAPI.create(input);
-      set({ meetings: [data.meeting, ...get().meetings].sort((a, b) =>
-        new Date(a.time).getTime() - new Date(b.time).getTime()
-      )});
+      set({
+        meetings: [data.meeting, ...get().meetings].sort((a, b) =>
+          new Date(a.time).getTime() - new Date(b.time).getTime()
+        )
+      });
     } catch (error: any) {
       set({ error: 'Failed to create meeting' });
       throw error;
@@ -75,6 +77,6 @@ export const useMeetingStore = create<MeetingState>((set, get) => ({
       if (cached) {
         set({ meetings: JSON.parse(cached), isLoading: false });
       }
-    } catch (error) {}
+    } catch (error) { }
   },
 }));

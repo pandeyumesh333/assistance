@@ -25,7 +25,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     try {
       set({ isLoading: true, error: null });
       const { data } = await taskAPI.getAll();
-      set({ tasks: data.tasks, isLoading: false });
+      set({ tasks: data.tasks || [], isLoading: false });
       // Cache for offline
       await AsyncStorage.setItem('cached_tasks', JSON.stringify(data.tasks));
     } catch (error: any) {

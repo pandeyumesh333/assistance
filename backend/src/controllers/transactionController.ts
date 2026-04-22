@@ -5,10 +5,23 @@ import { Account } from '../models/Account';
 
 export const getTransactions = async (req: Request, res: Response): Promise<void> => {
   try {
-    const transactions = await Transaction.find({ userId: req.userId }).sort({
-      timestamp: -1,
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const skip = (page - 1) * limit;
+
+    const transactions = await Transaction.find({ userId: req.userId })
+      .sort({ timestamp: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const total = await Transaction.countDocuments({ userId: req.userId });
+
+    res.json({
+      transactions,
+      page,
+      pages: Math.ceil(total / limit),
+      total,
     });
-    res.json(transactions);
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }

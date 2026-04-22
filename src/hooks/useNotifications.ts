@@ -75,9 +75,13 @@ async function registerForPushNotificationsAsync(): Promise<string | null> {
       return null;
     }
 
-    const tokenData = await Notifications.getExpoPushTokenAsync({
-      projectId: 'your-project-id',
-    });
+    let tokenData;
+    try {
+      tokenData = await Notifications.getExpoPushTokenAsync();
+    } catch (e) {
+      console.log('Skipping push token registration: No Project ID or Expo account configured.');
+      return null;
+    }
 
     if (Platform.OS === 'android') {
       Notifications.setNotificationChannelAsync('default', {
