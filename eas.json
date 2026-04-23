@@ -12,17 +12,13 @@
     },
     "preview": {
       "distribution": "internal",
-      "developmentClient": false,
       "android": {
-        "buildType": "apk",
-        "enableProguardInReleaseBuilds": true,
-        "enableShrinkResourcesInReleaseBuilds": true
+        "buildType": "apk"
       }
     },
     "production": {
       "android": {
-        "enableProguardInReleaseBuilds": true,
-        "enableShrinkResourcesInReleaseBuilds": true
+        "buildType": "app-bundle"
       }
     }
   },
