@@ -179,7 +179,7 @@ export const FinanceScreen = ({ navigation }: any) => {
                   <Ionicons name="settings-outline" size={20} color={Colors.textInverse} />
                 </TouchableOpacity>
               </View>
-              <Text style={styles.balanceAmount}>{formatCurrency(balance)}</Text>
+              <Text style={styles.balanceAmount}>{formatCurrency(balance?.currentBalance || 0)}</Text>
             </Card>
 
             {/* Charts Section (V2) */}
@@ -224,7 +224,7 @@ export const FinanceScreen = ({ navigation }: any) => {
             <EmptyState
               icon="receipt-outline"
               title="No transactions found"
-              description="Your transactions will appear here after they are detected or added."
+              subtitle="Your transactions will appear here after they are detected or added."
             />
           ) : null
         }
