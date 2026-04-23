@@ -10,7 +10,13 @@ import {
   Modal,
   TextInput,
   KeyboardAvoidingView,
+  Dimensions,
+  ScrollView,
 } from 'react-native';
+import {
+  LineChart,
+  PieChart,
+} from "react-native-chart-kit";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '../../components/Card';
@@ -29,8 +35,7 @@ import {
   Shadows,
 } from '../../constants/theme';
 
-
-
+const screenWidth = Dimensions.get("window").width;
 
 export const FinanceScreen = ({ navigation }: any) => {
   const { 
@@ -48,6 +53,61 @@ export const FinanceScreen = ({ navigation }: any) => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [openingBalanceInput, setOpeningBalanceInput] = useState('');
 
+  // Chart configuration
+  const chartConfig = {
+    backgroundGradientFrom: Colors.surface,
+    backgroundGradientTo: Colors.surface,
+    color: (opacity = 1) => `rgba(79, 70, 229, ${opacity})`,
+    labelColor: (opacity = 1) => Colors.textSecondary,
+    strokeWidth: 2,
+    barPercentage: 0.5,
+    useShadowColorFromDataset: false,
+    decimalPlaces: 0,
+  };
+
+  // Helper to get data for Pie Chart (Expenses only)
+  const getPieChartData = (txs: Transaction[]) => {
+    const expenses = txs.filter(t => t.type === 'debit');
+    const categoryTotals: Record<string, number> = {};
+    
+    expenses.forEach(t => {
+      categoryTotals[t.category] = (categoryTotals[t.category] || 0) + t.amount;
+    });
+
+    const colors = [
+      '#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#3B82F6', 
+      '#8B5CF6', '#EC4899', '#6366F1', '#14B8A6', '#F97316'
+    ];
+
+    return Object.keys(categoryTotals).map((cat, index) => ({
+      name: cat,
+      amount: categoryTotals[cat],
+      color: colors[index % colors.length],
+      legendFontColor: Colors.textSecondary,
+      legendFontSize: 12
+    })).sort((a, b) => b.amount - a.amount).slice(0, 5);
+  };
+
+  // Helper to get data for Line Chart (Spending trend)
+  const getLineChartData = (txs: Transaction[]) => {
+    const last7Days = [...Array(7)].map((_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (6 - i));
+      return d.toISOString().split('T')[0];
+    });
+
+    const dailySpending = last7Days.map(date => {
+      return txs
+        .filter(t => t.type === 'debit' && t.timestamp.startsWith(date))
+        .reduce((sum, t) => sum + t.amount, 0);
+    });
+
+    return {
+      labels: last7Days.map(d => d.split('-')[2]), // Just the day
+      datasets: [{ data: dailySpending }]
+    };
+  };
+
   useEffect(() => {
     fetchTransactions();
     fetchBalance();
@@ -59,71 +119,40 @@ export const FinanceScreen = ({ navigation }: any) => {
     setRefreshing(false);
   };
 
-  const handleSetOpeningBalance = () => {
-    setOpeningBalanceInput(balance?.openingBalance?.toString() || '0');
-    setIsModalVisible(true);
-  };
-
-  const saveOpeningBalance = async () => {
-    const amount = parseFloat(openingBalanceInput || '0');
+  const handleUpdateBalance = async () => {
+    const amount = parseFloat(openingBalanceInput);
     if (!isNaN(amount)) {
       await updateOpeningBalance(amount);
       setIsModalVisible(false);
+      setOpeningBalanceInput('');
     }
   };
 
   const renderTransaction = ({ item }: { item: Transaction }) => (
     <Card style={styles.txCard}>
       <View style={styles.txRow}>
-        <View
-          style={[
-            styles.txIcon,
-            {
-              backgroundColor:
-                item.type === 'credit' ? Colors.successLight : Colors.errorLight,
-            },
-          ]}
-        >
-          <Text style={styles.txIconEmoji}>
-            {CATEGORY_ICONS[item.category] || '📦'}
-          </Text>
+        <View style={[styles.txIconContainer, { backgroundColor: item.type === 'debit' ? Colors.errorLight : Colors.successLight }]}>
+          <Text style={styles.txIcon}>{CATEGORY_ICONS[item.category] || '📦'}</Text>
         </View>
-
         <View style={styles.txInfo}>
-          <Text style={styles.txMerchant} numberOfLines={1}>
-            {item.merchant || item.category}
-          </Text>
-          <View style={styles.txMeta}>
-            <Text style={styles.txCategory}>{item.category}</Text>
-            {item.source === 'sms' && (
-              <View style={styles.smsBadge}>
-                <Text style={styles.smsBadgeText}>SMS</Text>
-              </View>
-            )}
-          </View>
+          <Text style={styles.txMerchant}>{item.merchant || 'Unknown'}</Text>
+          <Text style={styles.txCategory}>{item.category} • {formatDate(item.timestamp)}</Text>
         </View>
-
-        <View style={styles.txRight}>
-          <Text
-            style={[
-              styles.txAmount,
-              { color: item.type === 'credit' ? Colors.credit : Colors.debit },
-            ]}
-          >
-            {item.type === 'credit' ? '+' : '-'}
-            {formatCurrency(item.amount)}
+        <View style={styles.txAmountContainer}>
+          <Text style={[styles.txAmount, { color: item.type === 'debit' ? Colors.debit : Colors.credit }]}>
+            {item.type === 'debit' ? '-' : '+'}{formatCurrency(item.amount)}
           </Text>
-          <Text style={styles.txDate}>{formatDate(item.timestamp)}</Text>
+          <Text style={styles.txSource}>{item.source}</Text>
         </View>
       </View>
     </Card>
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Finance</Text>
-        <TouchableOpacity
+        <Text style={styles.title}>Finance</Text>
+        <TouchableOpacity 
           style={styles.addButton}
           onPress={() => navigation.navigate('AddTransaction')}
         >
@@ -135,104 +164,69 @@ export const FinanceScreen = ({ navigation }: any) => {
         data={transactions}
         renderItem={renderTransaction}
         keyExtractor={(item) => item._id}
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={Colors.primary}
-          />
-        }
-        onEndReached={() => fetchMoreTransactions()}
+        contentContainerStyle={styles.listContent}
+        onEndReached={hasMore ? fetchMoreTransactions : null}
         onEndReachedThreshold={0.5}
-        ListFooterComponent={
-          isLoadingMore ? (
-            <View style={styles.footerLoader}>
-              <RefreshControl refreshing={true} tintColor={Colors.primary} />
-            </View>
-          ) : null
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />
         }
         ListHeaderComponent={
           <>
-            {/* Balance Card */}
-            <Card style={styles.balanceCard} variant="elevated" onPress={handleSetOpeningBalance}>
-              <Text style={styles.balanceLabel}>Current Balance</Text>
-              <Text style={styles.balanceAmount}>
-                {balance ? formatCurrency(balance.currentBalance) : '₹0'}
-              </Text>
-              <View style={styles.balanceDetails}>
-                <View style={styles.balanceItem}>
-                  <Ionicons
-                    name="arrow-up-circle"
-                    size={18}
-                    color={Colors.credit}
-                  />
-                  <View>
-                    <Text style={styles.balanceItemLabel}>Income</Text>
-                    <Text style={[styles.balanceItemValue, { color: Colors.credit }]}>
-                      {balance ? formatCurrency(balance.totalCredits) : '₹0'}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.divider} />
-                <View style={styles.balanceItem}>
-                  <Ionicons
-                    name="arrow-down-circle"
-                    size={18}
-                    color={Colors.debit}
-                  />
-                  <View>
-                    <Text style={styles.balanceItemLabel}>Expenses</Text>
-                    <Text style={[styles.balanceItemValue, { color: Colors.debit }]}>
-                      {balance ? formatCurrency(balance.totalDebits) : '₹0'}
-                    </Text>
-                  </View>
-                </View>
+            <Card style={styles.balanceCard} variant="elevated">
+              <View style={styles.balanceHeader}>
+                <Text style={styles.balanceLabel}>Current Balance</Text>
+                <TouchableOpacity onPress={() => setIsModalVisible(true)}>
+                  <Ionicons name="settings-outline" size={20} color={Colors.textInverse} />
+                </TouchableOpacity>
               </View>
+              <Text style={styles.balanceAmount}>{formatCurrency(balance)}</Text>
             </Card>
 
-            {/* SMS Notice for Android */}
-            {isSMSAvailable() && (
-              <Card style={styles.smsCard} variant="outlined">
-                <View style={styles.smsRow}>
-                  <Ionicons name="chatbox-ellipses" size={20} color={Colors.info} />
-                  <View style={styles.smsText}>
-                    <Text style={styles.smsTitle}>SMS Auto-Detection Active</Text>
-                    <Text style={styles.smsSubtitle}>
-                      Bank transactions are automatically parsed from SMS
-                    </Text>
-                  </View>
-                </View>
-              </Card>
-            )}
+            {/* Charts Section (V2) */}
+            {transactions.length > 0 && (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chartsContainer}>
+                {/* Pie Chart: Expenses by Category */}
+                <Card style={styles.chartCard}>
+                  <Text style={styles.chartTitle}>Expense Breakdown</Text>
+                  <PieChart
+                    data={getPieChartData(transactions)}
+                    width={screenWidth - Spacing.lg * 4}
+                    height={200}
+                    chartConfig={chartConfig}
+                    accessor={"amount"}
+                    backgroundColor={"transparent"}
+                    paddingLeft={"15"}
+                    center={[10, 0]}
+                    absolute
+                  />
+                </Card>
 
-            {/* iOS Manual Entry Notice */}
-            {Platform.OS === 'ios' && (
-              <Card style={styles.smsCard} variant="outlined">
-                <View style={styles.smsRow}>
-                  <Ionicons name="create-outline" size={20} color={Colors.info} />
-                  <View style={styles.smsText}>
-                    <Text style={styles.smsTitle}>Manual Entry Mode</Text>
-                    <Text style={styles.smsSubtitle}>
-                      Add transactions manually using the + button
-                    </Text>
-                  </View>
-                </View>
-              </Card>
+                {/* Line Chart: Daily Trend */}
+                <Card style={styles.chartCard}>
+                  <Text style={styles.chartTitle}>Spending Trend (Last 7 Days)</Text>
+                  <LineChart
+                    data={getLineChartData(transactions)}
+                    width={screenWidth - Spacing.lg * 4}
+                    height={200}
+                    chartConfig={chartConfig}
+                    bezier
+                    style={styles.lineChart}
+                  />
+                </Card>
+              </ScrollView>
             )}
 
             <Text style={styles.sectionTitle}>Recent Transactions</Text>
           </>
         }
         ListEmptyComponent={
-          <EmptyState
-            icon="receipt-outline"
-            title="No transactions yet"
-            subtitle="Start tracking your expenses"
-            actionLabel="Add Transaction"
-            onAction={() => navigation.navigate('AddTransaction')}
-          />
+          !isLoading ? (
+            <EmptyState
+              icon="receipt-outline"
+              title="No transactions found"
+              description="Your transactions will appear here after they are detected or added."
+            />
+          ) : null
         }
       />
 
@@ -242,46 +236,44 @@ export const FinanceScreen = ({ navigation }: any) => {
         animationType="fade"
         onRequestClose={() => setIsModalVisible(false)}
       >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.modalOverlay}
-        >
-          <Card style={styles.modalContent} variant="elevated">
-            <Text style={styles.modalTitle}>Set Opening Balance</Text>
-            <Text style={styles.modalSubtitle}>
-              Enter your current total balance across all accounts to start tracking.
-            </Text>
+        <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView 
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalContent}
+          >
+            <Text style={styles.modalTitle}>Update Balance</Text>
+            <Text style={styles.modalSubtitle}>Set your current opening balance</Text>
             <TextInput
               style={styles.input}
-              placeholder="0.00"
+              placeholder="Enter amount (e.g. 5000)"
+              keyboardType="numeric"
               value={openingBalanceInput}
               onChangeText={setOpeningBalanceInput}
-              keyboardType="numeric"
               autoFocus
             />
             <View style={styles.modalButtons}>
-              <TouchableOpacity
+              <TouchableOpacity 
                 style={[styles.modalButton, styles.cancelButton]}
                 onPress={() => setIsModalVisible(false)}
               >
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity
+              <TouchableOpacity 
                 style={[styles.modalButton, styles.saveButton]}
-                onPress={saveOpeningBalance}
+                onPress={handleUpdateBalance}
               >
                 <Text style={styles.saveButtonText}>Save Balance</Text>
               </TouchableOpacity>
             </View>
-          </Card>
-        </KeyboardAvoidingView>
+          </KeyboardAvoidingView>
+        </View>
       </Modal>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  safe: {
+  container: {
     flex: 1,
     backgroundColor: Colors.background,
   },
@@ -292,95 +284,71 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
   },
-  headerTitle: {
+  title: {
     fontSize: FontSizes.xxl,
     fontWeight: FontWeights.bold,
     color: Colors.textPrimary,
   },
   addButton: {
-    width: 40,
-    height: 40,
-    borderRadius: BorderRadius.md,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    ...Shadows.sm,
+    ...Shadows.md,
   },
-  list: {
-    paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.xxxl,
+  listContent: {
+    padding: Spacing.lg,
+    paddingBottom: Spacing.massive,
   },
   balanceCard: {
     backgroundColor: Colors.primary,
-    marginBottom: Spacing.md,
-    padding: Spacing.lg,
+    padding: Spacing.xl,
+    marginBottom: Spacing.xl,
+  },
+  balanceHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.xs,
   },
   balanceLabel: {
     fontSize: FontSizes.sm,
-    color: Colors.primaryLight,
+    color: 'rgba(255, 255, 255, 0.8)',
     fontWeight: FontWeights.medium,
-    marginBottom: Spacing.xxs,
   },
   balanceAmount: {
-    fontSize: FontSizes.display,
-    fontWeight: FontWeights.bold,
+    fontSize: FontSizes.xxxl,
     color: Colors.textInverse,
-    marginBottom: Spacing.md,
-  },
-  balanceDetails: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: BorderRadius.md,
-    padding: Spacing.sm,
-  },
-  balanceItem: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
-  },
-  balanceItemLabel: {
-    fontSize: FontSizes.xs,
-    color: 'rgba(255,255,255,0.7)',
-  },
-  balanceItemValue: {
-    fontSize: FontSizes.md,
-    fontWeight: FontWeights.semibold,
-  },
-  divider: {
-    width: 1,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    marginHorizontal: Spacing.sm,
-  },
-  smsCard: {
-    marginBottom: Spacing.md,
-  },
-  smsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  smsText: {
-    flex: 1,
-  },
-  smsTitle: {
-    fontSize: FontSizes.sm,
-    fontWeight: FontWeights.medium,
-    color: Colors.textPrimary,
-  },
-  smsSubtitle: {
-    fontSize: FontSizes.xs,
-    color: Colors.textTertiary,
-    marginTop: 2,
+    fontWeight: FontWeights.bold,
   },
   sectionTitle: {
-    fontSize: FontSizes.md,
-    fontWeight: FontWeights.semibold,
+    fontSize: FontSizes.lg,
+    fontWeight: FontWeights.bold,
     color: Colors.textPrimary,
     marginBottom: Spacing.sm,
     marginTop: Spacing.xs,
   },
-
+  chartsContainer: {
+    marginBottom: Spacing.lg,
+    marginTop: Spacing.xs,
+  },
+  chartCard: {
+    width: screenWidth - Spacing.lg * 2,
+    marginRight: Spacing.md,
+    padding: Spacing.md,
+  },
+  chartTitle: {
+    fontSize: FontSizes.sm,
+    fontWeight: FontWeights.semibold,
+    color: Colors.textSecondary,
+    marginBottom: Spacing.sm,
+  },
+  lineChart: {
+    marginVertical: 8,
+    borderRadius: 16,
+  },
   txCard: {
     marginBottom: Spacing.xs,
   },
@@ -388,86 +356,74 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  txIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: BorderRadius.md,
+  txIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: Spacing.sm,
+    marginRight: Spacing.md,
   },
-  txIconEmoji: {
-    fontSize: 18,
+  txIcon: {
+    fontSize: 24,
   },
   txInfo: {
     flex: 1,
   },
   txMerchant: {
     fontSize: FontSizes.md,
-    fontWeight: FontWeights.medium,
+    fontWeight: FontWeights.semibold,
     color: Colors.textPrimary,
-  },
-  txMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
-    marginTop: 2,
   },
   txCategory: {
     fontSize: FontSizes.xs,
-    color: Colors.textTertiary,
+    color: Colors.textSecondary,
+    marginTop: 2,
   },
-  smsBadge: {
-    backgroundColor: Colors.infoLight,
-    paddingHorizontal: Spacing.xxs,
-    paddingVertical: 1,
-    borderRadius: 4,
-  },
-  smsBadgeText: {
-    fontSize: 9,
-    fontWeight: FontWeights.semibold,
-    color: Colors.info,
-  },
-  txRight: {
+  txAmountContainer: {
     alignItems: 'flex-end',
   },
   txAmount: {
     fontSize: FontSizes.md,
-    fontWeight: FontWeights.semibold,
+    fontWeight: FontWeights.bold,
   },
-  txDate: {
-    fontSize: FontSizes.xs,
+  txSource: {
+    fontSize: 10,
     color: Colors.textTertiary,
+    textTransform: 'uppercase',
     marginTop: 2,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: Colors.overlay,
     justifyContent: 'center',
-    padding: Spacing.lg,
-  },
-  modalContent: {
     padding: Spacing.xl,
   },
+  modalContent: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.xl,
+    ...Shadows.lg,
+  },
   modalTitle: {
-    fontSize: FontSizes.lg,
+    fontSize: FontSizes.xl,
     fontWeight: FontWeights.bold,
     color: Colors.textPrimary,
-    marginBottom: Spacing.xs,
+    marginBottom: Spacing.xxs,
   },
   modalSubtitle: {
     fontSize: FontSizes.sm,
     color: Colors.textSecondary,
     marginBottom: Spacing.lg,
-    lineHeight: 20,
   },
   input: {
-    backgroundColor: Colors.borderLight,
+    backgroundColor: Colors.background,
     borderRadius: BorderRadius.md,
     padding: Spacing.md,
-    fontSize: FontSizes.xl,
-    fontWeight: FontWeights.semibold,
+    fontSize: FontSizes.md,
     color: Colors.textPrimary,
+    borderWidth: 1,
+    borderColor: Colors.border,
     marginBottom: Spacing.xl,
   },
   modalButtons: {
@@ -476,13 +432,14 @@ const styles = StyleSheet.create({
   },
   modalButton: {
     flex: 1,
-    height: 48,
+    paddingVertical: Spacing.md,
     borderRadius: BorderRadius.md,
     alignItems: 'center',
-    justifyContent: 'center',
   },
   cancelButton: {
-    backgroundColor: Colors.borderLight,
+    backgroundColor: Colors.background,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   saveButton: {
     backgroundColor: Colors.primary,
@@ -494,9 +451,5 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: Colors.textInverse,
     fontWeight: FontWeights.semibold,
-  },
-  footerLoader: {
-    paddingVertical: Spacing.xl,
-    alignItems: 'center',
   },
 });
