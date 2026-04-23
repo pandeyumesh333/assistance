@@ -33,7 +33,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const { data } = await authAPI.login(email, password);
       await SecureStore.setItemAsync('auth_token', data.token);
       set({
-        user: data.user,
+        user: data,
         token: data.token,
         isAuthenticated: true,
         isLoading: false,
@@ -52,7 +52,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const { data } = await authAPI.signup(email, password, name);
       await SecureStore.setItemAsync('auth_token', data.token);
       set({
-        user: data.user,
+        user: data,
         token: data.token,
         isAuthenticated: true,
         isLoading: false,
@@ -86,7 +86,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       const { data } = await authAPI.getMe();
       set({
-        user: data.user,
+        user: data,
         token,
         isAuthenticated: true,
         isRestoring: false,

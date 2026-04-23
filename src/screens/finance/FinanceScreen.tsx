@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -24,15 +24,13 @@ import { EmptyState } from '../../components/EmptyState';
 import { useFinanceStore } from '../../stores/financeStore';
 import { Transaction } from '../../types';
 import { formatCurrency, formatDate } from '../../utils/helpers';
-import { isSMSAvailable } from '../../utils/smsParser';
+import { useTheme } from '../../hooks/useTheme';
 import {
-  Colors,
   CATEGORY_ICONS,
   FontSizes,
   FontWeights,
   Spacing,
   BorderRadius,
-  Shadows,
 } from '../../constants/theme';
 
 const screenWidth = Dimensions.get("window").width;
@@ -46,26 +44,29 @@ export const FinanceScreen = ({ navigation }: any) => {
     fetchBalance, 
     updateOpeningBalance, 
     isLoading,
-    isLoadingMore,
     hasMore 
   } = useFinanceStore();
+  const { colors, isDark } = useTheme();
+  
   const [refreshing, setRefreshing] = useState(false);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [openingBalanceInput, setOpeningBalanceInput] = useState('');
 
   // Chart configuration
   const chartConfig = {
-    backgroundGradientFrom: Colors.surface,
-    backgroundGradientTo: Colors.surface,
-    color: (opacity = 1) => `rgba(79, 70, 229, ${opacity})`,
-    labelColor: (opacity = 1) => Colors.textSecondary,
+    backgroundGradientFrom: colors.surface,
+    backgroundGradientTo: colors.surface,
+    color: (opacity = 1) => isDark ? `rgba(129, 140, 248, ${opacity})` : `rgba(79, 70, 229, ${opacity})`,
+    labelColor: (opacity = 1) => colors.textSecondary,
     strokeWidth: 2,
     barPercentage: 0.5,
     useShadowColorFromDataset: false,
     decimalPlaces: 0,
+    propsForLabels: {
+      fontSize: 10,
+    }
   };
 
-  // Helper to get data for Pie Chart (Expenses only)
   const getPieChartData = (txs: Transaction[]) => {
     const expenses = txs.filter(t => t.type === 'debit');
     const categoryTotals: Record<string, number> = {};
@@ -74,21 +75,19 @@ export const FinanceScreen = ({ navigation }: any) => {
       categoryTotals[t.category] = (categoryTotals[t.category] || 0) + t.amount;
     });
 
-    const colors = [
-      '#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#3B82F6', 
-      '#8B5CF6', '#EC4899', '#6366F1', '#14B8A6', '#F97316'
-    ];
+    const pieColors = isDark 
+      ? ['#818CF8', '#34D399', '#FBBF24', '#F87171', '#60A5FA', '#A78BFA', '#F472B6', '#818CF8', '#2DD4BF', '#FB923C']
+      : ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#3B82F6', '#8B5CF6', '#EC4899', '#6366F1', '#14B8A6', '#F97316'];
 
     return Object.keys(categoryTotals).map((cat, index) => ({
       name: cat,
       amount: categoryTotals[cat],
-      color: colors[index % colors.length],
-      legendFontColor: Colors.textSecondary,
-      legendFontSize: 12
+      color: pieColors[index % pieColors.length],
+      legendFontColor: colors.textSecondary,
+      legendFontSize: 11
     })).sort((a, b) => b.amount - a.amount).slice(0, 5);
   };
 
-  // Helper to get data for Line Chart (Spending trend)
   const getLineChartData = (txs: Transaction[]) => {
     const last7Days = [...Array(7)].map((_, i) => {
       const d = new Date();
@@ -103,15 +102,18 @@ export const FinanceScreen = ({ navigation }: any) => {
     });
 
     return {
-      labels: last7Days.map(d => d.split('-')[2]), // Just the day
+      labels: last7Days.map(d => d.split('-')[2]),
       datasets: [{ data: dailySpending }]
     };
   };
 
-  useEffect(() => {
-    fetchTransactions();
-    fetchBalance();
-  }, []);
+  const { useFocusEffect } = require('@react-navigation/native');
+  useFocusEffect(
+    useCallback(() => {
+      fetchTransactions();
+      fetchBalance();
+    }, [fetchTransactions, fetchBalance])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -128,35 +130,109 @@ export const FinanceScreen = ({ navigation }: any) => {
     }
   };
 
+  const dynamicStyles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    title: {
+      fontSize: FontSizes.xxl,
+      fontWeight: FontWeights.bold,
+      color: colors.textPrimary,
+    },
+    balanceAmount: {
+      fontSize: FontSizes.xxxl,
+      color: '#FFFFFF',
+      fontWeight: FontWeights.bold,
+    },
+    sectionTitle: {
+      fontSize: FontSizes.lg,
+      fontWeight: FontWeights.bold,
+      color: colors.textPrimary,
+      marginBottom: Spacing.sm,
+      marginTop: Spacing.xs,
+    },
+    chartTitle: {
+      fontSize: FontSizes.sm,
+      fontWeight: FontWeights.semibold,
+      color: colors.textSecondary,
+      marginBottom: Spacing.sm,
+    },
+    txMerchant: {
+      fontSize: FontSizes.md,
+      fontWeight: FontWeights.semibold,
+      color: colors.textPrimary,
+    },
+    txCategory: {
+      fontSize: FontSizes.xs,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.6)',
+      justifyContent: 'center',
+      padding: Spacing.xl,
+    },
+    modalContent: {
+      backgroundColor: colors.surface,
+      borderRadius: BorderRadius.lg,
+      padding: Spacing.xl,
+      borderWidth: isDark ? 1 : 0,
+      borderColor: colors.border,
+    },
+    modalTitle: {
+      fontSize: FontSizes.xl,
+      fontWeight: FontWeights.bold,
+      color: colors.textPrimary,
+      marginBottom: Spacing.xxs,
+    },
+    modalSubtitle: {
+      fontSize: FontSizes.sm,
+      color: colors.textSecondary,
+      marginBottom: Spacing.lg,
+    },
+    input: {
+      backgroundColor: colors.background,
+      borderRadius: BorderRadius.md,
+      padding: Spacing.md,
+      fontSize: FontSizes.md,
+      color: colors.textPrimary,
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginBottom: Spacing.xl,
+    },
+  });
+
   const renderTransaction = ({ item }: { item: Transaction }) => (
     <Card style={styles.txCard}>
       <View style={styles.txRow}>
-        <View style={[styles.txIconContainer, { backgroundColor: item.type === 'debit' ? Colors.errorLight : Colors.successLight }]}>
+        <View style={[styles.txIconContainer, { backgroundColor: item.type === 'debit' ? colors.error + '20' : colors.success + '20' }]}>
           <Text style={styles.txIcon}>{CATEGORY_ICONS[item.category] || '📦'}</Text>
         </View>
         <View style={styles.txInfo}>
-          <Text style={styles.txMerchant}>{item.merchant || 'Unknown'}</Text>
-          <Text style={styles.txCategory}>{item.category} • {formatDate(item.timestamp)}</Text>
+          <Text style={dynamicStyles.txMerchant}>{item.merchant || 'Unknown'}</Text>
+          <Text style={dynamicStyles.txCategory}>{item.category} • {formatDate(item.timestamp)}</Text>
         </View>
         <View style={styles.txAmountContainer}>
-          <Text style={[styles.txAmount, { color: item.type === 'debit' ? Colors.debit : Colors.credit }]}>
+          <Text style={[styles.txAmount, { color: item.type === 'debit' ? (isDark ? '#F87171' : '#EF4444') : colors.success }]}>
             {item.type === 'debit' ? '-' : '+'}{formatCurrency(item.amount)}
           </Text>
-          <Text style={styles.txSource}>{item.source}</Text>
+          <Text style={[styles.txSource, { color: colors.textTertiary }]}>{item.source}</Text>
         </View>
       </View>
     </Card>
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={dynamicStyles.container} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.title}>Finance</Text>
+        <Text style={dynamicStyles.title}>Finance</Text>
         <TouchableOpacity 
-          style={styles.addButton}
+          style={[styles.addButton, { backgroundColor: colors.primary }]}
           onPress={() => navigation.navigate('AddTransaction')}
         >
-          <Ionicons name="add" size={24} color={Colors.textInverse} />
+          <Ionicons name="add" size={24} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
 
@@ -168,26 +244,24 @@ export const FinanceScreen = ({ navigation }: any) => {
         onEndReached={hasMore ? fetchMoreTransactions : null}
         onEndReachedThreshold={0.5}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
         ListHeaderComponent={
           <>
-            <Card style={styles.balanceCard} variant="elevated">
+            <Card style={[styles.balanceCard, { backgroundColor: colors.primary }]} variant="elevated">
               <View style={styles.balanceHeader}>
                 <Text style={styles.balanceLabel}>Current Balance</Text>
                 <TouchableOpacity onPress={() => setIsModalVisible(true)}>
-                  <Ionicons name="settings-outline" size={20} color={Colors.textInverse} />
+                  <Ionicons name="settings-outline" size={20} color="#FFFFFF" />
                 </TouchableOpacity>
               </View>
-              <Text style={styles.balanceAmount}>{formatCurrency(balance?.currentBalance || 0)}</Text>
+              <Text style={dynamicStyles.balanceAmount}>{formatCurrency(balance?.currentBalance || 0)}</Text>
             </Card>
 
-            {/* Charts Section (V2) */}
             {transactions.length > 0 && (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chartsContainer}>
-                {/* Pie Chart: Expenses by Category */}
                 <Card style={styles.chartCard}>
-                  <Text style={styles.chartTitle}>Expense Breakdown</Text>
+                  <Text style={dynamicStyles.chartTitle}>Expense Breakdown</Text>
                   <PieChart
                     data={getPieChartData(transactions)}
                     width={screenWidth - Spacing.lg * 4}
@@ -201,9 +275,8 @@ export const FinanceScreen = ({ navigation }: any) => {
                   />
                 </Card>
 
-                {/* Line Chart: Daily Trend */}
                 <Card style={styles.chartCard}>
-                  <Text style={styles.chartTitle}>Spending Trend (Last 7 Days)</Text>
+                  <Text style={dynamicStyles.chartTitle}>Spending Trend (Last 7 Days)</Text>
                   <LineChart
                     data={getLineChartData(transactions)}
                     width={screenWidth - Spacing.lg * 4}
@@ -216,7 +289,7 @@ export const FinanceScreen = ({ navigation }: any) => {
               </ScrollView>
             )}
 
-            <Text style={styles.sectionTitle}>Recent Transactions</Text>
+            <Text style={dynamicStyles.sectionTitle}>Recent Transactions</Text>
           </>
         }
         ListEmptyComponent={
@@ -236,16 +309,17 @@ export const FinanceScreen = ({ navigation }: any) => {
         animationType="fade"
         onRequestClose={() => setIsModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
+        <View style={dynamicStyles.modalOverlay}>
           <KeyboardAvoidingView 
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={styles.modalContent}
+            style={dynamicStyles.modalContent}
           >
-            <Text style={styles.modalTitle}>Update Balance</Text>
-            <Text style={styles.modalSubtitle}>Set your current opening balance</Text>
+            <Text style={dynamicStyles.modalTitle}>Update Balance</Text>
+            <Text style={dynamicStyles.modalSubtitle}>Set your current opening balance</Text>
             <TextInput
-              style={styles.input}
+              style={dynamicStyles.input}
               placeholder="Enter amount (e.g. 5000)"
+              placeholderTextColor={colors.textTertiary}
               keyboardType="numeric"
               value={openingBalanceInput}
               onChangeText={setOpeningBalanceInput}
@@ -253,16 +327,16 @@ export const FinanceScreen = ({ navigation }: any) => {
             />
             <View style={styles.modalButtons}>
               <TouchableOpacity 
-                style={[styles.modalButton, styles.cancelButton]}
+                style={[styles.modalButton, { backgroundColor: colors.background, borderColor: colors.border, borderWidth: 1 }]}
                 onPress={() => setIsModalVisible(false)}
               >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
+                <Text style={{ color: colors.textSecondary, fontWeight: 'bold' }}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity 
-                style={[styles.modalButton, styles.saveButton]}
+                style={[styles.modalButton, { backgroundColor: colors.primary }]}
                 onPress={handleUpdateBalance}
               >
-                <Text style={styles.saveButtonText}>Save Balance</Text>
+                <Text style={{ color: '#FFFFFF', fontWeight: 'bold' }}>Save Balance</Text>
               </TouchableOpacity>
             </View>
           </KeyboardAvoidingView>
@@ -273,10 +347,6 @@ export const FinanceScreen = ({ navigation }: any) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -284,26 +354,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
   },
-  title: {
-    fontSize: FontSizes.xxl,
-    fontWeight: FontWeights.bold,
-    color: Colors.textPrimary,
-  },
   addButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    ...Shadows.md,
   },
   listContent: {
     padding: Spacing.lg,
     paddingBottom: Spacing.massive,
   },
   balanceCard: {
-    backgroundColor: Colors.primary,
     padding: Spacing.xl,
     marginBottom: Spacing.xl,
   },
@@ -318,18 +380,6 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.8)',
     fontWeight: FontWeights.medium,
   },
-  balanceAmount: {
-    fontSize: FontSizes.xxxl,
-    color: Colors.textInverse,
-    fontWeight: FontWeights.bold,
-  },
-  sectionTitle: {
-    fontSize: FontSizes.lg,
-    fontWeight: FontWeights.bold,
-    color: Colors.textPrimary,
-    marginBottom: Spacing.sm,
-    marginTop: Spacing.xs,
-  },
   chartsContainer: {
     marginBottom: Spacing.lg,
     marginTop: Spacing.xs,
@@ -338,12 +388,6 @@ const styles = StyleSheet.create({
     width: screenWidth - Spacing.lg * 2,
     marginRight: Spacing.md,
     padding: Spacing.md,
-  },
-  chartTitle: {
-    fontSize: FontSizes.sm,
-    fontWeight: FontWeights.semibold,
-    color: Colors.textSecondary,
-    marginBottom: Spacing.sm,
   },
   lineChart: {
     marginVertical: 8,
@@ -370,16 +414,6 @@ const styles = StyleSheet.create({
   txInfo: {
     flex: 1,
   },
-  txMerchant: {
-    fontSize: FontSizes.md,
-    fontWeight: FontWeights.semibold,
-    color: Colors.textPrimary,
-  },
-  txCategory: {
-    fontSize: FontSizes.xs,
-    color: Colors.textSecondary,
-    marginTop: 2,
-  },
   txAmountContainer: {
     alignItems: 'flex-end',
   },
@@ -389,42 +423,8 @@ const styles = StyleSheet.create({
   },
   txSource: {
     fontSize: 10,
-    color: Colors.textTertiary,
     textTransform: 'uppercase',
     marginTop: 2,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: Colors.overlay,
-    justifyContent: 'center',
-    padding: Spacing.xl,
-  },
-  modalContent: {
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.xl,
-    ...Shadows.lg,
-  },
-  modalTitle: {
-    fontSize: FontSizes.xl,
-    fontWeight: FontWeights.bold,
-    color: Colors.textPrimary,
-    marginBottom: Spacing.xxs,
-  },
-  modalSubtitle: {
-    fontSize: FontSizes.sm,
-    color: Colors.textSecondary,
-    marginBottom: Spacing.lg,
-  },
-  input: {
-    backgroundColor: Colors.background,
-    borderRadius: BorderRadius.md,
-    padding: Spacing.md,
-    fontSize: FontSizes.md,
-    color: Colors.textPrimary,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    marginBottom: Spacing.xl,
   },
   modalButtons: {
     flexDirection: 'row',
@@ -435,21 +435,5 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
     borderRadius: BorderRadius.md,
     alignItems: 'center',
-  },
-  cancelButton: {
-    backgroundColor: Colors.background,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  saveButton: {
-    backgroundColor: Colors.primary,
-  },
-  cancelButtonText: {
-    color: Colors.textSecondary,
-    fontWeight: FontWeights.semibold,
-  },
-  saveButtonText: {
-    color: Colors.textInverse,
-    fontWeight: FontWeights.semibold,
   },
 });

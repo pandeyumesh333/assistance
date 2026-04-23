@@ -5,7 +5,8 @@ import {
   ViewStyle,
   TouchableOpacity,
 } from 'react-native';
-import { Colors, BorderRadius, Shadows, Spacing } from '../constants/theme';
+import { BorderRadius, Shadows, Spacing } from '../constants/theme';
+import { useTheme } from '../hooks/useTheme';
 
 interface CardProps {
   children: React.ReactNode;
@@ -20,10 +21,36 @@ export const Card: React.FC<CardProps> = ({
   onPress,
   variant = 'default',
 }) => {
+  const { colors } = useTheme();
+
+  const dynamicStyles = StyleSheet.create({
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: BorderRadius.lg,
+      padding: Spacing.md,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 1,
+      shadowRadius: 3,
+      elevation: 2,
+    },
+    elevated: {
+      shadowOffset: { width: 0, height: 2 },
+      shadowRadius: 8,
+      elevation: 4,
+    },
+    outlined: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      shadowColor: 'transparent',
+      elevation: 0,
+    },
+  });
+
   const cardStyle = [
-    styles.card,
-    variant === 'elevated' && styles.elevated,
-    variant === 'outlined' && styles.outlined,
+    dynamicStyles.card,
+    variant === 'elevated' && dynamicStyles.elevated,
+    variant === 'outlined' && dynamicStyles.outlined,
     style,
   ];
 
@@ -41,21 +68,3 @@ export const Card: React.FC<CardProps> = ({
 
   return <View style={cardStyle}>{children}</View>;
 };
-
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    ...Shadows.sm,
-  },
-  elevated: {
-    ...Shadows.md,
-  },
-  outlined: {
-    borderWidth: 1,
-    borderColor: Colors.border,
-    shadowColor: 'transparent',
-    elevation: 0,
-  },
-});

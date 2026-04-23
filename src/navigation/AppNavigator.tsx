@@ -1,11 +1,12 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 
 import { useAuthStore } from '../stores/authStore';
+import { useTheme } from '../hooks/useTheme';
 
 // Auth Screens
 import { LoginScreen } from '../screens/auth/LoginScreen';
@@ -21,7 +22,7 @@ import { FinanceScreen } from '../screens/finance/FinanceScreen';
 import { AddTransactionScreen } from '../screens/finance/AddTransactionScreen';
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
 
-import { Colors, FontSizes, FontWeights, Shadows } from '../constants/theme';
+import { FontSizes, FontWeights } from '../constants/theme';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -54,12 +55,12 @@ const FinanceStackNavigator = () => (
 );
 
 import { HealthStack } from './HealthStack';
-
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Bottom Tab Navigator
 const TabNavigator = () => {
   const insets = useSafeAreaInsets();
+  const { colors, isDark } = useTheme();
   
   return (
     <Tab.Navigator
@@ -88,16 +89,20 @@ const TabNavigator = () => {
   
           return <Ionicons name={iconName} size={22} color={color} />;
         },
-        tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.textTertiary,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textTertiary,
         tabBarStyle: {
-          backgroundColor: Colors.surface,
-          borderTopColor: Colors.borderLight,
+          backgroundColor: colors.surface,
+          borderTopColor: colors.borderLight,
           borderTopWidth: 1,
           paddingBottom: Math.max(insets.bottom, 12),
           paddingTop: 12,
           height: 64 + Math.max(insets.bottom, 0),
-          ...Shadows.sm,
+          shadowColor: colors.shadow,
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 4,
+          elevation: 8,
         },
         tabBarLabelStyle: {
           fontSize: FontSizes.xs,
@@ -126,17 +131,34 @@ const AuthStack = () => (
 
 export const AppNavigator = () => {
   const { isAuthenticated, isRestoring } = useAuthStore();
+  const { colors, mode } = useTheme();
 
   if (isRestoring) {
     return (
-      <View style={styles.loading}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+      <View style={[styles.loading, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
+  const CustomDefaultTheme = {
+    ...DefaultTheme,
+    colors: {
+      ...DefaultTheme.colors,
+      background: colors.background,
+    },
+  };
+
+  const CustomDarkTheme = {
+    ...DarkTheme,
+    colors: {
+      ...DarkTheme.colors,
+      background: colors.background,
+    },
+  };
+
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={mode === 'dark' ? CustomDarkTheme : CustomDefaultTheme}>
       {isAuthenticated ? <TabNavigator /> : <AuthStack />}
     </NavigationContainer>
   );
@@ -147,6 +169,5 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.background,
   },
 });

@@ -12,10 +12,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useHealthStore } from '../store/healthStore';
 import { Card } from '../../../components/Card';
-import { Colors, FontSizes, FontWeights, Spacing, BorderRadius, Shadows } from '../../../constants/theme';
+import { useTheme } from '../../../hooks/useTheme';
+import { FontSizes, FontWeights, Spacing, BorderRadius, Shadows } from '../../../constants/theme';
 
 export const WorkoutTracker = ({ navigation }: any) => {
   const { dailyStats, activeWorkout, startWorkout, fetchActiveWorkout } = useHealthStore();
+  const { colors, isDark } = useTheme();
 
   React.useEffect(() => {
     fetchActiveWorkout();
@@ -30,90 +32,136 @@ export const WorkoutTracker = ({ navigation }: any) => {
     }
   };
 
+  const dynamicStyles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    headerTitle: {
+      fontSize: FontSizes.lg,
+      fontWeight: FontWeights.bold,
+      color: colors.textPrimary,
+    },
+    statValue: {
+      fontSize: FontSizes.xl,
+      fontWeight: FontWeights.bold,
+      color: colors.textPrimary,
+    },
+    activeWorkoutCard: {
+      padding: Spacing.lg,
+      backgroundColor: colors.surface,
+      borderColor: colors.secondary,
+      borderWidth: 1,
+      marginBottom: Spacing.lg,
+    },
+    activeTitle: {
+      fontSize: FontSizes.md,
+      fontWeight: FontWeights.bold,
+      color: colors.textPrimary,
+    },
+    sectionTitle: {
+      fontSize: FontSizes.md,
+      fontWeight: FontWeights.bold,
+      color: colors.textPrimary,
+      marginBottom: Spacing.md,
+    },
+    actionLabel: {
+      fontSize: FontSizes.sm,
+      color: colors.textSecondary,
+      fontWeight: FontWeights.medium,
+    },
+  });
+
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={dynamicStyles.container} edges={['top']}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
+          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Workout Tracker</Text>
+        <Text style={dynamicStyles.headerTitle}>Workout Tracker</Text>
         <TouchableOpacity onPress={() => navigation.navigate('ExerciseSearch')}>
-          <Ionicons name="search" size={24} color={Colors.primary} />
+          <Ionicons name="search" size={24} color={colors.primary} />
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.statsOverview}>
           <Card style={styles.statBox}>
-            <Text style={styles.statLabel}>Today's Duration</Text>
-            <Text style={styles.statValue}>{dailyStats?.exerciseMinutes || 0} <Text style={styles.statUnit}>mins</Text></Text>
+            <Text style={[styles.statLabel, { color: colors.textTertiary }]}>Today's Duration</Text>
+            <Text style={dynamicStyles.statValue}>{dailyStats?.exerciseMinutes || 0} <Text style={[styles.statUnit, { color: colors.textTertiary }]}>mins</Text></Text>
           </Card>
           <Card style={styles.statBox}>
-            <Text style={styles.statLabel}>Calories Burned</Text>
-            <Text style={styles.statValue}>{dailyStats?.caloriesBurned || 0} <Text style={styles.statUnit}>kcal</Text></Text>
+            <Text style={[styles.statLabel, { color: colors.textTertiary }]}>Calories Burned</Text>
+            <Text style={dynamicStyles.statValue}>{dailyStats?.caloriesBurned || 0} <Text style={[styles.statUnit, { color: colors.textTertiary }]}>kcal</Text></Text>
           </Card>
           <Card style={styles.statBox}>
-            <Text style={styles.statLabel}>Total Volume</Text>
-            <Text style={styles.statValue}>{dailyStats?.totalVolume || 0} <Text style={styles.statUnit}>kg</Text></Text>
+            <Text style={[styles.statLabel, { color: colors.textTertiary }]}>Total Volume</Text>
+            <Text style={dynamicStyles.statValue}>{dailyStats?.totalVolume || 0} <Text style={[styles.statUnit, { color: colors.textTertiary }]}>kg</Text></Text>
           </Card>
         </View>
 
         {activeWorkout ? (
-          <Card style={styles.activeWorkoutCard} onPress={() => navigation.navigate('ActiveWorkout')}>
+          <Card style={dynamicStyles.activeWorkoutCard} onPress={() => navigation.navigate('ActiveWorkout')}>
             <View style={styles.activeHeader}>
-              <View style={styles.liveBadge}>
-                <View style={styles.liveDot} />
-                <Text style={styles.liveText}>LIVE</Text>
+              <View style={[styles.liveBadge, { backgroundColor: colors.secondary + '20' }]}>
+                <View style={[styles.liveDot, { backgroundColor: colors.secondary }]} />
+                <Text style={[styles.liveText, { color: colors.secondary }]}>LIVE</Text>
               </View>
-              <Text style={styles.activeTitle}>{activeWorkout.title}</Text>
+              <Text style={dynamicStyles.activeTitle}>{activeWorkout.title}</Text>
             </View>
-            <Text style={styles.activeSubtitle}>
+            <Text style={[styles.activeSubtitle, { color: colors.textSecondary }]}>
               {activeWorkout.exercises.length} exercises logged
             </Text>
-            <TouchableOpacity style={styles.resumeBtn} onPress={() => navigation.navigate('ActiveWorkout')}>
+            <TouchableOpacity 
+              style={[styles.resumeBtn, { backgroundColor: colors.secondary }]} 
+              onPress={() => navigation.navigate('ActiveWorkout')}
+            >
               <Text style={styles.resumeBtnText}>Resume Workout</Text>
             </TouchableOpacity>
           </Card>
         ) : (
-          <TouchableOpacity style={styles.startLargeBtn} onPress={handleStartWorkout}>
+          <TouchableOpacity 
+            style={[styles.startLargeBtn, { backgroundColor: colors.primary }]} 
+            onPress={handleStartWorkout}
+          >
             <View style={styles.playIconContainer}>
-              <Ionicons name="play" size={32} color={Colors.textInverse} />
+              <Ionicons name="play" size={32} color="#FFFFFF" />
             </View>
             <Text style={styles.startLargeBtnText}>Start Empty Workout</Text>
           </TouchableOpacity>
         )}
 
         <View style={styles.quickActions}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <Text style={dynamicStyles.sectionTitle}>Quick Actions</Text>
           <View style={styles.actionRow}>
             <TouchableOpacity 
               style={styles.actionItem}
               onPress={() => navigation.navigate('ExerciseSearch')}
             >
-              <View style={[styles.actionIcon, { backgroundColor: '#4F46E520' }]}>
-                <Ionicons name="library" size={24} color="#4F46E5" />
+              <View style={[styles.actionIcon, { backgroundColor: colors.primary + '20' }]}>
+                <Ionicons name="library" size={24} color={colors.primary} />
               </View>
-              <Text style={styles.actionLabel}>Library</Text>
+              <Text style={dynamicStyles.actionLabel}>Library</Text>
             </TouchableOpacity>
 
             <TouchableOpacity 
               style={styles.actionItem}
               onPress={() => navigation.navigate('Analytics')}
             >
-              <View style={[styles.actionIcon, { backgroundColor: '#F59E0B20' }]}>
-                <Ionicons name="stats-chart" size={24} color="#F59E0B" />
+              <View style={[styles.actionIcon, { backgroundColor: colors.warning + '20' }]}>
+                <Ionicons name="stats-chart" size={24} color={colors.warning} />
               </View>
-              <Text style={styles.actionLabel}>Stats</Text>
+              <Text style={dynamicStyles.actionLabel}>Stats</Text>
             </TouchableOpacity>
 
             <TouchableOpacity 
               style={styles.actionItem}
               onPress={() => Alert.alert('History', 'Coming Soon!')}
             >
-              <View style={[styles.actionIcon, { backgroundColor: '#10B98120' }]}>
-                <Ionicons name="time" size={24} color="#10B981" />
+              <View style={[styles.actionIcon, { backgroundColor: colors.secondary + '20' }]}>
+                <Ionicons name="time" size={24} color={colors.secondary} />
               </View>
-              <Text style={styles.actionLabel}>History</Text>
+              <Text style={dynamicStyles.actionLabel}>History</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -123,21 +171,12 @@ export const WorkoutTracker = ({ navigation }: any) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
-  },
-  headerTitle: {
-    fontSize: FontSizes.lg,
-    fontWeight: FontWeights.bold,
-    color: Colors.textPrimary,
   },
   scrollContent: {
     padding: Spacing.lg,
@@ -154,25 +193,11 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: FontSizes.xs,
-    color: Colors.textTertiary,
     marginBottom: 4,
-  },
-  statValue: {
-    fontSize: FontSizes.xl,
-    fontWeight: FontWeights.bold,
-    color: Colors.textPrimary,
   },
   statUnit: {
     fontSize: FontSizes.sm,
     fontWeight: FontWeights.medium,
-    color: Colors.textTertiary,
-  },
-  activeWorkoutCard: {
-    padding: Spacing.lg,
-    backgroundColor: Colors.textInverse,
-    borderColor: '#22C55E',
-    borderWidth: 1,
-    marginBottom: Spacing.lg,
   },
   activeHeader: {
     flexDirection: 'row',
@@ -183,7 +208,6 @@ const styles = StyleSheet.create({
   liveBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#22C55E20',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 4,
@@ -193,35 +217,25 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#22C55E',
   },
   liveText: {
     fontSize: 10,
     fontWeight: 'bold',
-    color: '#22C55E',
-  },
-  activeTitle: {
-    fontSize: FontSizes.md,
-    fontWeight: FontWeights.bold,
-    color: Colors.textPrimary,
   },
   activeSubtitle: {
     fontSize: FontSizes.sm,
-    color: Colors.textSecondary,
     marginBottom: Spacing.md,
   },
   resumeBtn: {
-    backgroundColor: '#22C55E',
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.md,
     alignItems: 'center',
   },
   resumeBtnText: {
-    color: Colors.textInverse,
+    color: '#FFFFFF',
     fontWeight: 'bold',
   },
   startLargeBtn: {
-    backgroundColor: Colors.primary,
     paddingVertical: 24,
     borderRadius: BorderRadius.lg,
     alignItems: 'center',
@@ -237,18 +251,12 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.full,
   },
   startLargeBtnText: {
-    color: Colors.textInverse,
+    color: '#FFFFFF',
     fontSize: FontSizes.lg,
     fontWeight: FontWeights.bold,
   },
   quickActions: {
     marginTop: Spacing.md,
-  },
-  sectionTitle: {
-    fontSize: FontSizes.md,
-    fontWeight: FontWeights.bold,
-    color: Colors.textPrimary,
-    marginBottom: Spacing.md,
   },
   actionRow: {
     flexDirection: 'row',
@@ -265,10 +273,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
-  },
-  actionLabel: {
-    fontSize: FontSizes.sm,
-    color: Colors.textSecondary,
-    fontWeight: FontWeights.medium,
   },
 });

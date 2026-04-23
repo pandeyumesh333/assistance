@@ -15,8 +15,8 @@ import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { useTaskStore } from '../../stores/taskStore';
 import { Task } from '../../types';
+import { useTheme } from '../../hooks/useTheme';
 import {
-  Colors,
   FontSizes,
   FontWeights,
   Spacing,
@@ -32,6 +32,7 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
   const existingTask = route.params?.task;
   const isEditing = !!existingTask;
 
+  const { colors, isDark } = useTheme();
   const [title, setTitle] = useState(existingTask?.title || '');
   const [description, setDescription] = useState(existingTask?.description || '');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>(
@@ -90,13 +91,64 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
     { value: 'monthly', label: 'Monthly' },
   ];
 
+  const dynamicStyles = StyleSheet.create({
+    safe: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    headerTitle: {
+      fontSize: FontSizes.lg,
+      fontWeight: FontWeights.semibold,
+      color: colors.textPrimary,
+    },
+    label: {
+      fontSize: FontSizes.sm,
+      fontWeight: FontWeights.medium,
+      color: colors.textSecondary,
+      marginBottom: Spacing.xs,
+      marginTop: Spacing.xs,
+    },
+    optionBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: Spacing.xs,
+      paddingHorizontal: Spacing.md,
+      borderRadius: BorderRadius.full,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+      gap: Spacing.xxs,
+    },
+    optionText: {
+      fontSize: FontSizes.sm,
+      color: colors.textSecondary,
+      fontWeight: FontWeights.medium,
+    },
+    dateBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: Spacing.sm,
+      borderRadius: BorderRadius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+      gap: Spacing.xs,
+      marginBottom: Spacing.md,
+    },
+    dateBtnText: {
+      flex: 1,
+      fontSize: FontSizes.md,
+      color: colors.textSecondary,
+    },
+  });
+
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={dynamicStyles.safe} edges={['top']}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
+          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>
+        <Text style={dynamicStyles.headerTitle}>
           {isEditing ? 'Edit Task' : 'New Task'}
         </Text>
         <View style={{ width: 24 }} />
@@ -106,6 +158,7 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
         <Input
           label="Title"
@@ -125,13 +178,13 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
         />
 
         {/* Priority */}
-        <Text style={styles.label}>Priority</Text>
+        <Text style={dynamicStyles.label}>Priority</Text>
         <View style={styles.optionRow}>
           {priorities.map((p) => (
             <TouchableOpacity
               key={p.value}
               style={[
-                styles.optionBtn,
+                dynamicStyles.optionBtn,
                 priority === p.value && {
                   backgroundColor: p.color + '18',
                   borderColor: p.color,
@@ -144,7 +197,7 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
               />
               <Text
                 style={[
-                  styles.optionText,
+                  dynamicStyles.optionText,
                   priority === p.value && { color: p.color },
                 ]}
               >
@@ -155,18 +208,18 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
         </View>
 
         {/* Due Date */}
-        <Text style={styles.label}>Due Date</Text>
+        <Text style={dynamicStyles.label}>Due Date</Text>
         <TouchableOpacity
-          style={styles.dateBtn}
+          style={dynamicStyles.dateBtn}
           onPress={() => setShowDatePicker(true)}
         >
-          <Ionicons name="calendar-outline" size={20} color={Colors.textSecondary} />
-          <Text style={styles.dateBtnText}>
-            {dueDate ? dueDate.toLocaleDateString() : 'Set due date'}
+          <Ionicons name="calendar-outline" size={20} color={colors.textSecondary} />
+          <Text style={dynamicStyles.dateBtnText}>
+            {dueDate ? dueDate.toLocaleString() : 'Set due date'}
           </Text>
           {dueDate && (
             <TouchableOpacity onPress={() => setDueDate(null)}>
-              <Ionicons name="close-circle" size={20} color={Colors.textTertiary} />
+              <Ionicons name="close-circle" size={20} color={colors.textTertiary} />
             </TouchableOpacity>
           )}
         </TouchableOpacity>
@@ -185,21 +238,21 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
         )}
 
         {/* Recurring */}
-        <Text style={styles.label}>Recurring</Text>
+        <Text style={dynamicStyles.label}>Recurring</Text>
         <View style={styles.optionRow}>
           {recurringOptions.map((r) => (
             <TouchableOpacity
               key={r.value}
               style={[
-                styles.optionBtn,
-                recurring === r.value && styles.optionBtnActive,
+                dynamicStyles.optionBtn,
+                recurring === r.value && { backgroundColor: colors.primary + '15', borderColor: colors.primary },
               ]}
               onPress={() => setRecurring(r.value as any)}
             >
               <Text
                 style={[
-                  styles.optionText,
-                  recurring === r.value && styles.optionTextActive,
+                  dynamicStyles.optionText,
+                  recurring === r.value && { color: colors.primary },
                 ]}
               >
                 {r.label}
@@ -221,21 +274,12 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
 };
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
-  },
-  headerTitle: {
-    fontSize: FontSizes.lg,
-    fontWeight: FontWeights.semibold,
-    color: Colors.textPrimary,
   },
   scroll: {
     flex: 1,
@@ -244,62 +288,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.xxxl,
   },
-  label: {
-    fontSize: FontSizes.sm,
-    fontWeight: FontWeights.medium,
-    color: Colors.textSecondary,
-    marginBottom: Spacing.xs,
-    marginTop: Spacing.xs,
-  },
   optionRow: {
     flexDirection: 'row',
     gap: Spacing.xs,
     marginBottom: Spacing.md,
     flexWrap: 'wrap',
   },
-  optionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: Spacing.xs,
-    paddingHorizontal: Spacing.md,
-    borderRadius: BorderRadius.full,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surface,
-    gap: Spacing.xxs,
-  },
-  optionBtnActive: {
-    backgroundColor: Colors.primary + '15',
-    borderColor: Colors.primary,
-  },
   optionDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-  },
-  optionText: {
-    fontSize: FontSizes.sm,
-    color: Colors.textSecondary,
-    fontWeight: FontWeights.medium,
-  },
-  optionTextActive: {
-    color: Colors.primary,
-  },
-  dateBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: Spacing.sm,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surface,
-    gap: Spacing.xs,
-    marginBottom: Spacing.md,
-  },
-  dateBtnText: {
-    flex: 1,
-    fontSize: FontSizes.md,
-    color: Colors.textSecondary,
   },
   saveBtn: {
     marginTop: Spacing.lg,

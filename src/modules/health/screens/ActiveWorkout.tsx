@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, memo } from 'react';
+import React, { useState, useEffect, useCallback, memo, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,19 +10,20 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useHealthStore } from '../store/healthStore';
-import { Colors, FontSizes, FontWeights, Spacing, BorderRadius, Shadows } from '../../../constants/theme';
+import { useTheme } from '../../../hooks/useTheme';
+import { FontSizes, FontWeights, Spacing, BorderRadius } from '../../../constants/theme';
 import { Card } from '../../../components/Card';
 
-// --- Sub-component for individual sets to fix flicking ---
-const SetRow = memo(({ set, setIdx, exIdx, updateSet, toggleSetType, removeSet, prevSet }: any) => {
+// --- Sub-component for individual sets ---
+const SetRow = memo(({ set, setIdx, exIdx, updateSet, toggleSetType, removeSet, prevSet, restActive, colors }: any) => {
   const [localWeight, setLocalWeight] = useState(set.weight.toString());
   const [localReps, setLocalReps] = useState(set.reps.toString());
 
-  // Update local state when prop changes (e.g. from store)
   useEffect(() => {
     setLocalWeight(set.weight.toString());
     setLocalReps(set.reps.toString());
@@ -35,68 +36,95 @@ const SetRow = memo(({ set, setIdx, exIdx, updateSet, toggleSetType, removeSet, 
     });
   };
 
+  const onFocus = () => {
+    if (restActive) {
+      Alert.alert('Rest in Progress', 'Rest is not complete! Give your muscles a few more seconds to recover.');
+    }
+  };
+
   return (
     <View 
       style={[
         styles.setRow, 
-        set.completed && styles.completedSetRow,
-        set.type === 'warmup' && styles.warmupSetRow
+        set.completed && { backgroundColor: colors.secondary + '15' },
+        set.type === 'warmup' && { backgroundColor: colors.warning + '10' }
       ]}
     >
       <TouchableOpacity 
         style={styles.setNumberBtn}
         onPress={() => toggleSetType(exIdx, setIdx)}
-        onLongPress={() => {
-          Alert.alert('Remove Set', 'Are you sure you want to remove this set?', [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Remove', style: 'destructive', onPress: () => removeSet(exIdx, setIdx) },
-          ]);
-        }}
       >
-        <Text style={[styles.setNumberText, set.type !== 'normal' && styles.specialSetText]}>
+        <Text style={[styles.setNumberText, { color: colors.textSecondary }, set.type !== 'normal' && { color: colors.secondary }]}>
           {set.type === 'warmup' ? 'W' : set.type === 'drop' ? 'D' : set.type === 'failure' ? 'F' : setIdx + 1}
         </Text>
       </TouchableOpacity>
 
       <View style={{ flex: 1, alignItems: 'center' }}>
-        <Text style={styles.prevText}>
+        <Text style={[styles.prevText, { color: colors.textTertiary }]}>
           {prevSet ? `${prevSet.weight} x ${prevSet.reps}` : '-'}
         </Text>
       </View>
 
       <TextInput
-        style={[styles.setInput, set.completed && styles.completedInput]}
+        style={[
+          styles.setInput, 
+          { backgroundColor: colors.background, color: colors.textPrimary, borderColor: colors.borderLight },
+          set.completed && { backgroundColor: 'transparent', borderWidth: 0 }
+        ]}
         keyboardType="numeric"
         value={localWeight === '0' ? '' : localWeight}
         onChangeText={setLocalWeight}
         onBlur={handleBlur}
+        onFocus={onFocus}
         placeholder="0"
-        placeholderTextColor={Colors.textTertiary}
+        placeholderTextColor={colors.textTertiary}
       />
 
       <TextInput
-        style={[styles.setInput, set.completed && styles.completedInput]}
+        style={[
+          styles.setInput, 
+          { backgroundColor: colors.background, color: colors.textPrimary, borderColor: colors.borderLight },
+          set.completed && { backgroundColor: 'transparent', borderWidth: 0 }
+        ]}
         keyboardType="numeric"
         value={localReps === '0' ? '' : localReps}
         onChangeText={setLocalReps}
         onBlur={handleBlur}
+        onFocus={onFocus}
         placeholder="0"
-        placeholderTextColor={Colors.textTertiary}
+        placeholderTextColor={colors.textTertiary}
       />
 
       <TouchableOpacity 
-        style={[styles.checkBtn, set.completed && styles.checkBtnActive]}
+        style={[
+          styles.checkBtn, 
+          { backgroundColor: colors.background, borderColor: colors.borderLight },
+          set.completed && { backgroundColor: colors.secondary, borderColor: colors.secondary }
+        ]}
         onPress={() => {
+          const reps = parseInt(localReps) || 0;
           const newCompleted = !set.completed;
-          // Sync local values before marking as completed
+          
+          if (newCompleted) {
+            if (reps < 2) {
+              Alert.alert('Smart Coach', 'Try to do at least 1 more extra rep for better results!');
+            } else if (reps > 4) {
+              Alert.alert('Smart Coach', "Great volume! No need for extra sets, you've reached your strength goal!");
+            }
+          }
+
           updateSet(exIdx, setIdx, { 
             weight: parseFloat(localWeight) || 0, 
-            reps: parseInt(localReps) || 0,
+            reps: reps,
             completed: newCompleted 
           });
         }}
       >
-        <Ionicons name="checkmark" size={20} color={set.completed ? Colors.textInverse : Colors.textTertiary} />
+        <Ionicons name="checkmark" size={20} color={set.completed ? '#FFFFFF' : colors.textTertiary} />
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.deleteSetIcon} onPress={() => removeSet(exIdx, setIdx)}>
+        <Ionicons name="close-circle" size={18} color={colors.error + '50'} />
       </TouchableOpacity>
     </View>
   );
@@ -110,14 +138,17 @@ export const ActiveWorkout = ({ navigation, route }: any) => {
     finishWorkout, 
     fetchPreviousWorkout,
   } = useHealthStore();
+  const { colors, isDark } = useTheme();
+  
   const [seconds, setSeconds] = useState(0);
   const [restSeconds, setRestSeconds] = useState(0);
+  const [undoData, setUndoData] = useState<any>(null);
+  const undoAnim = useRef(new Animated.Value(100)).current;
 
   useEffect(() => {
     fetchPreviousWorkout();
   }, []);
 
-  // Workout Timer
   useEffect(() => {
     const interval = setInterval(() => {
       if (activeWorkout) {
@@ -129,7 +160,6 @@ export const ActiveWorkout = ({ navigation, route }: any) => {
     return () => clearInterval(interval);
   }, [activeWorkout]);
 
-  // Rest Timer
   useEffect(() => {
     let interval: any;
     if (restSeconds > 0) {
@@ -167,6 +197,29 @@ export const ActiveWorkout = ({ navigation, route }: any) => {
     return sets.length > 0 && sets.every((s: any) => s.completed);
   };
 
+  const showUndo = (data: any) => {
+    setUndoData(data);
+    Animated.spring(undoAnim, { toValue: 0, useNativeDriver: true }).start();
+    setTimeout(() => {
+      hideUndo();
+    }, 5000);
+  };
+
+  const hideUndo = () => {
+    Animated.timing(undoAnim, { toValue: 100, duration: 300, useNativeDriver: true }).start(() => {
+      setUndoData(null);
+    });
+  };
+
+  const handleUndo = () => {
+    if (undoData) {
+      const updatedExercises = [...activeWorkout.exercises];
+      updatedExercises[undoData.exIdx].sets.splice(undoData.setIdx, 0, undoData.set);
+      updateActiveWorkout({ exercises: updatedExercises });
+      hideUndo();
+    }
+  };
+
   const handleFinish = () => {
     Alert.alert(
       'Finish Workout',
@@ -180,6 +233,20 @@ export const ActiveWorkout = ({ navigation, route }: any) => {
       ]
     );
   };
+
+  const handleExerciseMenu = (exIdx: number) => {
+    Alert.alert(
+      'Exercise Options',
+      exerciseName(exIdx),
+      [
+        { text: 'Replace Exercise', onPress: () => navigation.navigate('ExerciseSearch', { mode: 'replace', replaceIdx: exIdx }) },
+        { text: 'Remove Exercise', style: 'destructive', onPress: () => removeExercise(exIdx) },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
+
+  const exerciseName = (idx: number) => activeWorkout.exercises[idx]?.exerciseName || 'Exercise';
 
   const addSet = (exerciseIndex: number) => {
     const updatedExercises = [...activeWorkout.exercises];
@@ -202,7 +269,6 @@ export const ActiveWorkout = ({ navigation, route }: any) => {
       ...data,
     };
     
-    // Auto-trigger rest timer if a set was just completed
     if (data.completed === true) {
       setRestSeconds(90);
     }
@@ -223,19 +289,123 @@ export const ActiveWorkout = ({ navigation, route }: any) => {
     updateActiveWorkout({ exercises: updatedExercises });
   };
 
-  const removeSet = (exerciseIndex: number, setIndex: number) => {
+  const removeSet = (exIdx: number, setIdx: number) => {
+    const set = activeWorkout.exercises[exIdx].sets[setIdx];
     const updatedExercises = [...activeWorkout.exercises];
-    updatedExercises[exerciseIndex].sets = updatedExercises[exerciseIndex].sets.filter((_: any, i: number) => i !== setIndex);
+    updatedExercises[exIdx].sets = updatedExercises[exIdx].sets.filter((_: any, i: number) => i !== setIdx);
+    
+    showUndo({ exIdx, setIdx, set });
     updateActiveWorkout({ exercises: updatedExercises });
   };
 
+  const dynamicStyles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: Spacing.lg,
+      paddingVertical: Spacing.md,
+      backgroundColor: colors.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.borderLight,
+    },
+    workoutTitle: {
+      fontSize: FontSizes.md,
+      fontWeight: FontWeights.bold,
+      color: colors.textPrimary,
+    },
+    totalVolumeText: {
+      fontSize: FontSizes.xs,
+      color: colors.textTertiary,
+      fontWeight: FontWeights.medium,
+    },
+    timer: {
+      fontSize: FontSizes.lg,
+      fontWeight: FontWeights.bold,
+      color: colors.primary,
+    },
+    restText: {
+      fontSize: 12,
+      fontWeight: 'bold',
+      color: colors.secondary,
+    },
+    exerciseName: {
+      fontSize: FontSizes.md,
+      fontWeight: FontWeights.bold,
+      color: colors.primary,
+    },
+    completeText: {
+      color: colors.secondary,
+    },
+    exVolumeText: {
+      fontSize: 12,
+      color: colors.textTertiary,
+      fontWeight: FontWeights.medium,
+    },
+    setHeader: {
+      fontSize: 10,
+      fontWeight: FontWeights.bold,
+      color: colors.textTertiary,
+      textAlign: 'center',
+    },
+    addSetBtn: {
+      marginTop: Spacing.md,
+      paddingVertical: Spacing.sm,
+      alignItems: 'center',
+      backgroundColor: colors.background,
+      borderRadius: BorderRadius.md,
+      borderWidth: 1,
+      borderColor: colors.primary + '30',
+    },
+    addSetText: {
+      color: colors.textPrimary,
+      fontWeight: FontWeights.bold,
+      fontSize: FontSizes.sm,
+    },
+    checkpointText: {
+      fontSize: 12,
+      fontWeight: 'bold',
+      color: colors.secondary,
+    },
+    undoBanner: {
+      position: 'absolute',
+      bottom: 20,
+      left: 20,
+      right: 20,
+      backgroundColor: isDark ? colors.surfaceElevated : colors.textPrimary,
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: Spacing.md,
+      borderRadius: BorderRadius.md,
+      justifyContent: 'space-between',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 10,
+      elevation: 8,
+    },
+    undoText: {
+      color: '#FFFFFF',
+      fontWeight: 'medium',
+    },
+    undoBtnLabel: {
+      color: colors.primaryLight,
+      fontWeight: 'bold',
+      marginRight: Spacing.md,
+    },
+  });
+
   if (!activeWorkout) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={dynamicStyles.container}>
         <View style={styles.center}>
-          <Text>No active workout found.</Text>
+          <Text style={{ color: colors.textSecondary }}>No active workout found.</Text>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Text style={styles.backBtnText}>Go Back</Text>
+            <Text style={{ color: colors.primary, fontWeight: 'bold' }}>Go Back</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -243,28 +413,28 @@ export const ActiveWorkout = ({ navigation, route }: any) => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={dynamicStyles.container}>
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
-        <View style={styles.header}>
+        <View style={dynamicStyles.header}>
           <View>
             <View style={styles.titleRow}>
-              <Text style={styles.workoutTitle}>{activeWorkout.title}</Text>
-              <Text style={styles.totalVolumeText}>{calculateTotalVolume()} kg</Text>
+              <Text style={dynamicStyles.workoutTitle}>{activeWorkout.title}</Text>
+              <Text style={dynamicStyles.totalVolumeText}>{calculateTotalVolume()} kg</Text>
             </View>
             <View style={styles.timerRow}>
-              <Text style={styles.timer}>{formatTime(seconds)}</Text>
+              <Text style={dynamicStyles.timer}>{formatTime(seconds)}</Text>
               {restSeconds > 0 && (
-                <View style={styles.restBadge}>
-                  <Ionicons name="timer-outline" size={14} color={Colors.secondary} />
-                  <Text style={styles.restText}>Rest: {formatTime(restSeconds)}</Text>
+                <View style={[styles.restBadge, { backgroundColor: colors.secondary + '20' }, restSeconds < 10 && { backgroundColor: colors.error + '20' }]}>
+                  <Ionicons name="timer-outline" size={14} color={colors.secondary} />
+                  <Text style={dynamicStyles.restText}>Rest: {formatTime(restSeconds)}</Text>
                 </View>
               )}
             </View>
           </View>
-          <TouchableOpacity style={styles.finishBtn} onPress={handleFinish}>
+          <TouchableOpacity style={[styles.finishBtn, { backgroundColor: colors.primary }]} onPress={handleFinish}>
             <Text style={styles.finishBtnText}>Finish</Text>
           </TouchableOpacity>
         </View>
@@ -273,27 +443,27 @@ export const ActiveWorkout = ({ navigation, route }: any) => {
           {activeWorkout.exercises.map((exercise: any, exIdx: number) => {
             const isComplete = isExerciseComplete(exIdx);
             return (
-              <Card key={exIdx} style={[styles.exerciseCard, isComplete && styles.completeExerciseCard]}>
+              <Card key={exIdx} style={[styles.exerciseCard, isComplete && { borderLeftColor: colors.secondary, backgroundColor: colors.success + '05' }]}>
                 <View style={styles.exerciseHeader}>
                   <View style={styles.exerciseNameRow}>
-                    <Text style={[styles.exerciseName, isComplete && styles.completeText]}>
+                    <Text style={[dynamicStyles.exerciseName, isComplete && dynamicStyles.completeText]}>
                       {exercise.exerciseName}
                     </Text>
-                    {isComplete && <Ionicons name="checkmark-circle" size={18} color={Colors.secondary} />}
+                    {isComplete && <Ionicons name="checkmark-circle" size={18} color={colors.secondary} />}
                   </View>
                   <View style={styles.exerciseActions}>
-                    <Text style={styles.exVolumeText}>{calculateExerciseVolume(exIdx)} kg</Text>
-                    <TouchableOpacity onPress={() => removeExercise(exIdx)}>
-                      <Ionicons name="ellipsis-horizontal" size={20} color={Colors.textTertiary} />
+                    <Text style={dynamicStyles.exVolumeText}>{calculateExerciseVolume(exIdx)} kg</Text>
+                    <TouchableOpacity onPress={() => handleExerciseMenu(exIdx)}>
+                      <Ionicons name="ellipsis-horizontal" size={20} color={colors.textTertiary} />
                     </TouchableOpacity>
                   </View>
                 </View>
 
                 <View style={styles.setListHeader}>
-                  <Text style={[styles.setHeader, { width: 40 }]}>Set</Text>
-                  <Text style={[styles.setHeader, { flex: 1 }]}>Previous</Text>
-                  <Text style={[styles.setHeader, { width: 70 }]}>kg</Text>
-                  <Text style={[styles.setHeader, { width: 70 }]}>Reps</Text>
+                  <Text style={[dynamicStyles.setHeader, { width: 40 }]}>Set</Text>
+                  <Text style={[dynamicStyles.setHeader, { flex: 1 }]}>Previous</Text>
+                  <Text style={[dynamicStyles.setHeader, { width: 70 }]}>kg</Text>
+                  <Text style={[dynamicStyles.setHeader, { width: 70 }]}>Reps</Text>
                   <View style={{ width: 40 }} />
                 </View>
 
@@ -311,22 +481,31 @@ export const ActiveWorkout = ({ navigation, route }: any) => {
                       toggleSetType={toggleSetType}
                       removeSet={removeSet}
                       prevSet={prevSet}
+                      restActive={restSeconds > 0}
+                      colors={colors}
                     />
                   );
                 })}
 
-                <TouchableOpacity style={styles.addSetBtn} onPress={() => addSet(exIdx)}>
-                  <Text style={styles.addSetText}>+ Add Set</Text>
+                <TouchableOpacity style={dynamicStyles.addSetBtn} onPress={() => addSet(exIdx)}>
+                  <Text style={dynamicStyles.addSetText}>+ Add Set</Text>
                 </TouchableOpacity>
+
+                {isComplete && (
+                  <View style={[styles.checkpointBox, { backgroundColor: colors.secondary + '10' }]}>
+                    <Ionicons name="checkmark-done" size={20} color={colors.secondary} />
+                    <Text style={dynamicStyles.checkpointText}>Checkpoint Reached!</Text>
+                  </View>
+                )}
               </Card>
             );
           })}
 
           <TouchableOpacity 
-            style={styles.addExerciseBtn} 
+            style={[styles.addExerciseBtn, { backgroundColor: colors.secondary }]} 
             onPress={() => navigation.navigate('ExerciseSearch', { mode: 'select' })}
           >
-            <Ionicons name="add" size={24} color={Colors.textInverse} />
+            <Ionicons name="add" size={24} color="#FFFFFF" />
             <Text style={styles.addExerciseText}>Add Exercise</Text>
           </TouchableOpacity>
 
@@ -339,49 +518,31 @@ export const ActiveWorkout = ({ navigation, route }: any) => {
               ]);
             }}
           >
-            <Text style={styles.cancelBtnText}>Discard Workout</Text>
+            <Text style={[styles.cancelBtnText, { color: colors.error }]}>Discard Workout</Text>
           </TouchableOpacity>
         </ScrollView>
+
+        {undoData && (
+          <Animated.View style={[dynamicStyles.undoBanner, { transform: [{ translateY: undoAnim }] }]}>
+            <Text style={dynamicStyles.undoText}>Set deleted</Text>
+            <TouchableOpacity onPress={handleUndo}>
+              <Text style={dynamicStyles.undoBtnLabel}>UNDO</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={hideUndo} style={styles.closeUndo}>
+              <Ionicons name="close" size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+          </Animated.View>
+        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    backgroundColor: Colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borderLight,
-    ...Shadows.sm,
-  },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-  },
-  workoutTitle: {
-    fontSize: FontSizes.md,
-    fontWeight: FontWeights.bold,
-    color: Colors.textPrimary,
-  },
-  totalVolumeText: {
-    fontSize: FontSizes.xs,
-    color: Colors.textTertiary,
-    fontWeight: FontWeights.medium,
-  },
-  timer: {
-    fontSize: FontSizes.lg,
-    fontWeight: FontWeights.bold,
-    color: Colors.primary,
   },
   timerRow: {
     flexDirection: 'row',
@@ -391,25 +552,18 @@ const styles = StyleSheet.create({
   restBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.secondary + '20',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: BorderRadius.sm,
     gap: 4,
   },
-  restText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: Colors.secondary,
-  },
   finishBtn: {
-    backgroundColor: Colors.primary,
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.md,
   },
   finishBtnText: {
-    color: Colors.textInverse,
+    color: '#FFFFFF',
     fontWeight: FontWeights.bold,
   },
   scrollContent: {
@@ -419,10 +573,6 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
     marginBottom: Spacing.md,
     borderLeftWidth: 4,
-    borderLeftColor: 'transparent',
-  },
-  completeExerciseCard: {
-    borderLeftColor: Colors.secondary,
   },
   exerciseHeader: {
     flexDirection: 'row',
@@ -435,34 +585,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.xs,
   },
-  exerciseName: {
-    fontSize: FontSizes.md,
-    fontWeight: FontWeights.bold,
-    color: Colors.primary,
-  },
-  completeText: {
-    color: Colors.secondary,
-  },
   exerciseActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.md,
   },
-  exVolumeText: {
-    fontSize: 12,
-    color: Colors.textTertiary,
-    fontWeight: FontWeights.medium,
-  },
   setListHeader: {
     flexDirection: 'row',
     marginBottom: Spacing.xs,
     paddingHorizontal: 4,
-  },
-  setHeader: {
-    fontSize: 10,
-    fontWeight: FontWeights.bold,
-    color: Colors.textTertiary,
-    textAlign: 'center',
   },
   setRow: {
     flexDirection: 'row',
@@ -471,45 +602,27 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     marginBottom: 4,
   },
-  completedSetRow: {
-    backgroundColor: Colors.secondary + '15',
-  },
-  warmupSetRow: {
-    backgroundColor: Colors.warning + '10',
-  },
   setNumberBtn: {
     width: 40,
     alignItems: 'center',
   },
   setNumberText: {
     fontSize: FontSizes.sm,
-    color: Colors.textSecondary,
     fontWeight: FontWeights.bold,
-  },
-  specialSetText: {
-    color: Colors.secondary,
   },
   prevText: {
     flex: 1,
     textAlign: 'center',
-    color: Colors.textTertiary,
     fontSize: FontSizes.sm,
   },
   setInput: {
     width: 70,
-    backgroundColor: Colors.background,
     borderRadius: 4,
     paddingVertical: 4,
     textAlign: 'center',
     fontSize: FontSizes.sm,
-    color: Colors.textPrimary,
     marginHorizontal: 2,
     borderWidth: 1,
-    borderColor: Colors.borderLight,
-  },
-  completedInput: {
-    backgroundColor: 'transparent',
-    borderWidth: 0,
   },
   checkBtn: {
     width: 40,
@@ -517,42 +630,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 4,
-    backgroundColor: Colors.background,
     marginLeft: 4,
     borderWidth: 1,
-    borderColor: Colors.borderLight,
   },
-  checkBtnActive: {
-    backgroundColor: Colors.secondary,
-    borderColor: Colors.secondary,
+  deleteSetIcon: {
+    paddingHorizontal: 8,
   },
-  addSetBtn: {
-    marginTop: Spacing.md,
-    paddingVertical: Spacing.sm,
+  checkpointBox: {
+    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.background,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    borderColor: Colors.primary + '20',
-  },
-  addSetText: {
-    color: Colors.textPrimary,
-    fontWeight: FontWeights.bold,
-    fontSize: FontSizes.sm,
+    justifyContent: 'center',
+    gap: Spacing.xs,
+    marginTop: Spacing.md,
+    padding: Spacing.xs,
+    borderRadius: BorderRadius.sm,
   },
   addExerciseBtn: {
     flexDirection: 'row',
-    backgroundColor: Colors.secondary,
     paddingVertical: Spacing.md,
     borderRadius: BorderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: Spacing.md,
     gap: Spacing.xs,
-    ...Shadows.sm,
   },
   addExerciseText: {
-    color: Colors.textInverse,
+    color: '#FFFFFF',
     fontWeight: FontWeights.bold,
   },
   cancelBtn: {
@@ -561,8 +664,10 @@ const styles = StyleSheet.create({
     marginTop: Spacing.lg,
   },
   cancelBtnText: {
-    color: Colors.error,
     fontWeight: FontWeights.bold,
+  },
+  closeUndo: {
+    padding: 4,
   },
   center: {
     flex: 1,
@@ -572,9 +677,5 @@ const styles = StyleSheet.create({
   backBtn: {
     marginTop: Spacing.md,
     padding: Spacing.md,
-  },
-  backBtnText: {
-    color: Colors.primary,
-    fontWeight: FontWeights.bold,
   },
 });

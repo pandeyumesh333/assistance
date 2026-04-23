@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, StyleSheet, Text } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
-import { Colors, FontSizes, FontWeights } from '../../../constants/theme';
+import { FontSizes, FontWeights } from '../../../constants/theme';
+import { useTheme } from '../../../hooks/useTheme';
 
 interface ProgressRingProps {
   size: number;
@@ -17,11 +18,16 @@ export const ProgressRing: React.FC<ProgressRingProps> = ({
   size,
   progress,
   strokeWidth = 10,
-  color = Colors.primary,
-  backgroundColor = Colors.background,
+  color,
+  backgroundColor,
   label,
   subLabel,
 }) => {
+  const { colors } = useTheme();
+  
+  const ringColor = color || colors.primary;
+  const ringBg = backgroundColor || colors.borderLight;
+
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
   const strokeDashoffset = circumference - progress * circumference;
@@ -30,7 +36,7 @@ export const ProgressRing: React.FC<ProgressRingProps> = ({
     <View style={[styles.container, { width: size, height: size }]}>
       <Svg width={size} height={size}>
         <Circle
-          stroke={backgroundColor}
+          stroke={ringBg}
           fill="none"
           cx={size / 2}
           cy={size / 2}
@@ -38,7 +44,7 @@ export const ProgressRing: React.FC<ProgressRingProps> = ({
           strokeWidth={strokeWidth}
         />
         <Circle
-          stroke={color}
+          stroke={ringColor}
           fill="none"
           cx={size / 2}
           cy={size / 2}
@@ -51,8 +57,8 @@ export const ProgressRing: React.FC<ProgressRingProps> = ({
         />
       </Svg>
       <View style={styles.textContainer}>
-        {label && <Text style={styles.label}>{label}</Text>}
-        {subLabel && <Text style={styles.subLabel}>{subLabel}</Text>}
+        {label && <Text style={[styles.label, { color: colors.textPrimary }]}>{label}</Text>}
+        {subLabel && <Text style={[styles.subLabel, { color: colors.textTertiary }]}>{subLabel}</Text>}
       </View>
     </View>
   );
@@ -71,11 +77,9 @@ const styles = StyleSheet.create({
   label: {
     fontSize: FontSizes.xxl,
     fontWeight: FontWeights.bold,
-    color: Colors.textPrimary,
   },
   subLabel: {
     fontSize: FontSizes.xs,
-    color: Colors.textTertiary,
     marginTop: 2,
   },
 });

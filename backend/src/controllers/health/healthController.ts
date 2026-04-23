@@ -51,6 +51,21 @@ export const getProfile = async (req: Request, res: Response) => {
   }
 };
 
+export const updateHabitsList = async (req: Request, res: Response) => {
+  try {
+    const userId = req.userId as string;
+    const { habitsList } = req.body;
+    const profile = await HealthProfile.findOneAndUpdate(
+      { userId },
+      { habitsList },
+      { new: true }
+    );
+    res.status(200).json(profile);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // --- Daily Stats & Sync ---
 
 const updateDailyStats = async (userId: string, date: string) => {

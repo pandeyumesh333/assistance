@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, Text } from 'react-native';
-import { Colors, FontSizes, FontWeights, Spacing, BorderRadius } from '../../../constants/theme';
+import { FontSizes, FontWeights, Spacing, BorderRadius } from '../../../constants/theme';
+import { useTheme } from '../../../hooks/useTheme';
 
 interface MacroProgressBarProps {
   label: string;
@@ -17,17 +18,18 @@ export const MacroProgressBar: React.FC<MacroProgressBarProps> = ({
   unit,
   color,
 }) => {
+  const { colors } = useTheme();
   const progress = Math.min(1, current / (target || 1));
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.label}>{label}</Text>
-        <Text style={styles.values}>
+        <Text style={[styles.label, { color: colors.textSecondary }]}>{label}</Text>
+        <Text style={[styles.values, { color: colors.textTertiary }]}>
           {Math.round(current)} / {Math.round(target)}{unit}
         </Text>
       </View>
-      <View style={styles.barBackground}>
+      <View style={[styles.barBackground, { backgroundColor: colors.borderLight }]}>
         <View
           style={[
             styles.barForeground,
@@ -51,15 +53,12 @@ const styles = StyleSheet.create({
   label: {
     fontSize: FontSizes.sm,
     fontWeight: FontWeights.medium,
-    color: Colors.textSecondary,
   },
   values: {
     fontSize: FontSizes.sm,
-    color: Colors.textTertiary,
   },
   barBackground: {
     height: 8,
-    backgroundColor: Colors.background,
     borderRadius: BorderRadius.full,
     overflow: 'hidden',
   },

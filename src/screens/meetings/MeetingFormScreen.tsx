@@ -15,8 +15,8 @@ import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { useMeetingStore } from '../../stores/meetingStore';
 import { Meeting } from '../../types';
+import { useTheme } from '../../hooks/useTheme';
 import {
-  Colors,
   FontSizes,
   FontWeights,
   Spacing,
@@ -32,6 +32,7 @@ export const MeetingFormScreen = ({ navigation, route }: Props) => {
   const existingMeeting = route.params?.meeting;
   const isEditing = !!existingMeeting;
 
+  const { colors, isDark } = useTheme();
   const [title, setTitle] = useState(existingMeeting?.title || '');
   const [location, setLocation] = useState(existingMeeting?.location || '');
   const [notes, setNotes] = useState(existingMeeting?.notes || '');
@@ -85,13 +86,68 @@ export const MeetingFormScreen = ({ navigation, route }: Props) => {
     { value: 60, label: '1 hour' },
   ];
 
+  const dynamicStyles = StyleSheet.create({
+    safe: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    headerTitle: {
+      fontSize: FontSizes.lg,
+      fontWeight: FontWeights.semibold,
+      color: colors.textPrimary,
+    },
+    label: {
+      fontSize: FontSizes.sm,
+      fontWeight: FontWeights.medium,
+      color: colors.textSecondary,
+      marginBottom: Spacing.xs,
+      marginTop: Spacing.xs,
+    },
+    dateBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: Spacing.sm,
+      borderRadius: BorderRadius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+      gap: Spacing.xs,
+      marginBottom: Spacing.md,
+    },
+    dateBtnText: {
+      flex: 1,
+      fontSize: FontSizes.md,
+      color: colors.textPrimary,
+    },
+    optionBtn: {
+      paddingVertical: Spacing.xs,
+      paddingHorizontal: Spacing.md,
+      borderRadius: BorderRadius.full,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+    optionBtnActive: {
+      backgroundColor: colors.primary + '15',
+      borderColor: colors.primary,
+    },
+    optionText: {
+      fontSize: FontSizes.sm,
+      color: colors.textSecondary,
+      fontWeight: FontWeights.medium,
+    },
+    optionTextActive: {
+      color: colors.primary,
+    },
+  });
+
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={dynamicStyles.safe} edges={['top']}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
+          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>
+        <Text style={dynamicStyles.headerTitle}>
           {isEditing ? 'Edit Meeting' : 'New Meeting'}
         </Text>
         <View style={{ width: 24 }} />
@@ -101,6 +157,7 @@ export const MeetingFormScreen = ({ navigation, route }: Props) => {
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
         <Input
           label="Title"
@@ -110,13 +167,13 @@ export const MeetingFormScreen = ({ navigation, route }: Props) => {
         />
 
         {/* Date/Time */}
-        <Text style={styles.label}>Date & Time</Text>
+        <Text style={dynamicStyles.label}>Date & Time</Text>
         <TouchableOpacity
-          style={styles.dateBtn}
+          style={dynamicStyles.dateBtn}
           onPress={() => setShowDatePicker(true)}
         >
-          <Ionicons name="calendar-outline" size={20} color={Colors.textSecondary} />
-          <Text style={styles.dateBtnText}>
+          <Ionicons name="calendar-outline" size={20} color={colors.textSecondary} />
+          <Text style={dynamicStyles.dateBtnText}>
             {meetingTime.toLocaleString([], {
               dateStyle: 'medium',
               timeStyle: 'short',
@@ -141,7 +198,7 @@ export const MeetingFormScreen = ({ navigation, route }: Props) => {
           value={location}
           onChangeText={setLocation}
           placeholder="Where? (optional)"
-          icon={<Ionicons name="location-outline" size={20} color={Colors.textTertiary} />}
+          icon={<Ionicons name="location-outline" size={20} color={colors.textTertiary} />}
         />
 
         <Input
@@ -155,21 +212,21 @@ export const MeetingFormScreen = ({ navigation, route }: Props) => {
         />
 
         {/* Reminder */}
-        <Text style={styles.label}>Reminder</Text>
+        <Text style={dynamicStyles.label}>Reminder</Text>
         <View style={styles.optionRow}>
           {reminderOptions.map((r) => (
             <TouchableOpacity
               key={String(r.value)}
               style={[
-                styles.optionBtn,
-                reminderMinutes === r.value && styles.optionBtnActive,
+                dynamicStyles.optionBtn,
+                reminderMinutes === r.value && dynamicStyles.optionBtnActive,
               ]}
               onPress={() => setReminderMinutes(r.value)}
             >
               <Text
                 style={[
-                  styles.optionText,
-                  reminderMinutes === r.value && styles.optionTextActive,
+                  dynamicStyles.optionText,
+                  reminderMinutes === r.value && dynamicStyles.optionTextActive,
                 ]}
               >
                 {r.label}
@@ -191,21 +248,12 @@ export const MeetingFormScreen = ({ navigation, route }: Props) => {
 };
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
-  },
-  headerTitle: {
-    fontSize: FontSizes.lg,
-    fontWeight: FontWeights.semibold,
-    color: Colors.textPrimary,
   },
   scroll: {
     flex: 1,
@@ -214,54 +262,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.xxxl,
   },
-  label: {
-    fontSize: FontSizes.sm,
-    fontWeight: FontWeights.medium,
-    color: Colors.textSecondary,
-    marginBottom: Spacing.xs,
-    marginTop: Spacing.xs,
-  },
-  dateBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: Spacing.sm,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surface,
-    gap: Spacing.xs,
-    marginBottom: Spacing.md,
-  },
-  dateBtnText: {
-    flex: 1,
-    fontSize: FontSizes.md,
-    color: Colors.textPrimary,
-  },
   optionRow: {
     flexDirection: 'row',
     gap: Spacing.xs,
     marginBottom: Spacing.md,
     flexWrap: 'wrap',
-  },
-  optionBtn: {
-    paddingVertical: Spacing.xs,
-    paddingHorizontal: Spacing.md,
-    borderRadius: BorderRadius.full,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surface,
-  },
-  optionBtnActive: {
-    backgroundColor: Colors.primary + '15',
-    borderColor: Colors.primary,
-  },
-  optionText: {
-    fontSize: FontSizes.sm,
-    color: Colors.textSecondary,
-    fontWeight: FontWeights.medium,
-  },
-  optionTextActive: {
-    color: Colors.primary,
   },
   saveBtn: {
     marginTop: Spacing.lg,

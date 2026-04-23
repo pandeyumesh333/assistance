@@ -12,7 +12,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { useFinanceStore } from '../../stores/financeStore';
-import { CATEGORIES, Colors, FontSizes, FontWeights, Spacing, BorderRadius } from '../../constants/theme';
+import { useTheme } from '../../hooks/useTheme';
+import { CATEGORIES, FontSizes, FontWeights, Spacing, BorderRadius } from '../../constants/theme';
 
 export const AddTransactionScreen = ({ navigation }: any) => {
   const [amount, setAmount] = useState('');
@@ -22,6 +23,7 @@ export const AddTransactionScreen = ({ navigation }: any) => {
   const [loading, setLoading] = useState(false);
 
   const { createTransaction } = useFinanceStore();
+  const { colors, isDark } = useTheme();
 
   const handleSave = async () => {
     const numAmount = parseFloat(amount);
@@ -47,13 +49,75 @@ export const AddTransactionScreen = ({ navigation }: any) => {
     }
   };
 
+  const dynamicStyles = StyleSheet.create({
+    safe: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    headerTitle: {
+      fontSize: FontSizes.lg,
+      fontWeight: FontWeights.semibold,
+      color: colors.textPrimary,
+    },
+    typeBtn: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: Spacing.xs,
+      paddingVertical: Spacing.md,
+      borderRadius: BorderRadius.md,
+      borderWidth: 1.5,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+    typeText: {
+      fontSize: FontSizes.md,
+      fontWeight: FontWeights.semibold,
+      color: colors.textSecondary,
+    },
+    currencySign: {
+      fontSize: FontSizes.xxxl,
+      fontWeight: FontWeights.bold,
+      color: colors.textPrimary,
+      marginRight: Spacing.xs,
+    },
+    amountInput: {
+      fontSize: FontSizes.xxxl,
+      fontWeight: FontWeights.bold,
+      color: colors.textPrimary,
+    },
+    label: {
+      fontSize: FontSizes.sm,
+      fontWeight: FontWeights.medium,
+      color: colors.textSecondary,
+      marginBottom: Spacing.xs,
+    },
+    categoryBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.xxs,
+      paddingVertical: Spacing.xs,
+      paddingHorizontal: Spacing.sm,
+      borderRadius: BorderRadius.full,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+    categoryText: {
+      fontSize: FontSizes.sm,
+      color: colors.textSecondary,
+      fontWeight: FontWeights.medium,
+    },
+  });
+
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={dynamicStyles.safe} edges={['top']}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
+          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Add Transaction</Text>
+        <Text style={dynamicStyles.headerTitle}>Add Transaction</Text>
         <View style={{ width: 24 }} />
       </View>
 
@@ -61,25 +125,26 @@ export const AddTransactionScreen = ({ navigation }: any) => {
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
         {/* Type Toggle */}
         <View style={styles.typeToggle}>
           <TouchableOpacity
             style={[
-              styles.typeBtn,
-              type === 'debit' && styles.typeBtnDebit,
+              dynamicStyles.typeBtn,
+              type === 'debit' && { backgroundColor: isDark ? '#EF4444' : '#EF4444', borderColor: '#EF4444' },
             ]}
             onPress={() => setType('debit')}
           >
             <Ionicons
               name="arrow-down-circle"
               size={20}
-              color={type === 'debit' ? Colors.textInverse : Colors.debit}
+              color={type === 'debit' ? '#FFFFFF' : '#EF4444'}
             />
             <Text
               style={[
-                styles.typeText,
-                type === 'debit' && styles.typeTextActive,
+                dynamicStyles.typeText,
+                type === 'debit' && { color: '#FFFFFF' },
               ]}
             >
               Expense
@@ -88,20 +153,20 @@ export const AddTransactionScreen = ({ navigation }: any) => {
 
           <TouchableOpacity
             style={[
-              styles.typeBtn,
-              type === 'credit' && styles.typeBtnCredit,
+              dynamicStyles.typeBtn,
+              type === 'credit' && { backgroundColor: colors.success, borderColor: colors.success },
             ]}
             onPress={() => setType('credit')}
           >
             <Ionicons
               name="arrow-up-circle"
               size={20}
-              color={type === 'credit' ? Colors.textInverse : Colors.credit}
+              color={type === 'credit' ? '#FFFFFF' : colors.success}
             />
             <Text
               style={[
-                styles.typeText,
-                type === 'credit' && styles.typeTextActive,
+                dynamicStyles.typeText,
+                type === 'credit' && { color: '#FFFFFF' },
               ]}
             >
               Income
@@ -111,14 +176,15 @@ export const AddTransactionScreen = ({ navigation }: any) => {
 
         {/* Amount */}
         <View style={styles.amountContainer}>
-          <Text style={styles.currencySign}>₹</Text>
+          <Text style={dynamicStyles.currencySign}>₹</Text>
           <Input
             value={amount}
             onChangeText={setAmount}
             placeholder="0"
             keyboardType="decimal-pad"
-            style={styles.amountInput}
+            style={dynamicStyles.amountInput}
             containerStyle={styles.amountInputContainer}
+            placeholderTextColor={colors.textTertiary}
           />
         </View>
 
@@ -131,14 +197,14 @@ export const AddTransactionScreen = ({ navigation }: any) => {
         />
 
         {/* Category */}
-        <Text style={styles.label}>Category</Text>
+        <Text style={dynamicStyles.label}>Category</Text>
         <View style={styles.categoryGrid}>
           {CATEGORIES.map((cat) => (
             <TouchableOpacity
               key={cat}
               style={[
-                styles.categoryBtn,
-                category === cat && styles.categoryBtnActive,
+                dynamicStyles.categoryBtn,
+                category === cat && { backgroundColor: colors.primary + '15', borderColor: colors.primary },
               ]}
               onPress={() => setCategory(cat)}
             >
@@ -150,8 +216,8 @@ export const AddTransactionScreen = ({ navigation }: any) => {
               </Text>
               <Text
                 style={[
-                  styles.categoryText,
-                  category === cat && styles.categoryTextActive,
+                  dynamicStyles.categoryText,
+                  category === cat && { color: colors.primary },
                 ]}
               >
                 {cat}
@@ -173,21 +239,12 @@ export const AddTransactionScreen = ({ navigation }: any) => {
 };
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
-  },
-  headerTitle: {
-    fontSize: FontSizes.lg,
-    fontWeight: FontWeights.semibold,
-    color: Colors.textPrimary,
   },
   scroll: {
     flex: 1,
@@ -201,58 +258,14 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
     marginBottom: Spacing.xl,
   },
-  typeBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.xs,
-    paddingVertical: Spacing.md,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surface,
-  },
-  typeBtnDebit: {
-    backgroundColor: Colors.debit,
-    borderColor: Colors.debit,
-  },
-  typeBtnCredit: {
-    backgroundColor: Colors.credit,
-    borderColor: Colors.credit,
-  },
-  typeText: {
-    fontSize: FontSizes.md,
-    fontWeight: FontWeights.semibold,
-    color: Colors.textSecondary,
-  },
-  typeTextActive: {
-    color: Colors.textInverse,
-  },
   amountContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: Spacing.md,
   },
-  currencySign: {
-    fontSize: FontSizes.xxxl,
-    fontWeight: FontWeights.bold,
-    color: Colors.textPrimary,
-    marginRight: Spacing.xs,
-  },
-  amountInput: {
-    fontSize: FontSizes.xxxl,
-    fontWeight: FontWeights.bold,
-  },
   amountInputContainer: {
     flex: 1,
     marginBottom: 0,
-  },
-  label: {
-    fontSize: FontSizes.sm,
-    fontWeight: FontWeights.medium,
-    color: Colors.textSecondary,
-    marginBottom: Spacing.xs,
   },
   categoryGrid: {
     flexDirection: 'row',
@@ -260,31 +273,8 @@ const styles = StyleSheet.create({
     gap: Spacing.xs,
     marginBottom: Spacing.lg,
   },
-  categoryBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xxs,
-    paddingVertical: Spacing.xs,
-    paddingHorizontal: Spacing.sm,
-    borderRadius: BorderRadius.full,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surface,
-  },
-  categoryBtnActive: {
-    backgroundColor: Colors.primary + '15',
-    borderColor: Colors.primary,
-  },
   categoryEmoji: {
     fontSize: 14,
-  },
-  categoryText: {
-    fontSize: FontSizes.sm,
-    color: Colors.textSecondary,
-    fontWeight: FontWeights.medium,
-  },
-  categoryTextActive: {
-    color: Colors.primary,
   },
   saveBtn: {
     marginTop: Spacing.xs,

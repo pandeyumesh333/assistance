@@ -16,16 +16,15 @@ import { useTaskStore } from '../../stores/taskStore';
 import { useMeetingStore } from '../../stores/meetingStore';
 import { useFinanceStore } from '../../stores/financeStore';
 import { useHealthStore } from '../../modules/health/store/healthStore';
+import { useTheme } from '../../hooks/useTheme';
 import { syncRecentSMS } from '../../services/smsListener';
 import { Platform } from 'react-native';
 import { getGreeting, formatCurrency, formatTime } from '../../utils/helpers';
 import {
-  Colors,
   FontSizes,
   FontWeights,
   Spacing,
   BorderRadius,
-  Shadows,
 } from '../../constants/theme';
 
 export const DashboardScreen = ({ navigation }: any) => {
@@ -34,6 +33,8 @@ export const DashboardScreen = ({ navigation }: any) => {
   const { meetings, fetchMeetings } = useMeetingStore();
   const { balance, fetchBalance, fetchTransactions, transactions } = useFinanceStore();
   const { dailyStats, fetchHealthData } = useHealthStore();
+  const { colors, isDark } = useTheme();
+  
   const [refreshing, setRefreshing] = useState(false);
   const fadeAnim = useState(new Animated.Value(0))[0];
 
@@ -70,20 +71,26 @@ export const DashboardScreen = ({ navigation }: any) => {
       fetchHealthData(new Date().toISOString().split('T')[0]),
     ]);
 
-    // Auto-sync SMS on Android
     if (Platform.OS === 'android') {
       syncRecentSMS();
     }
-  }, [fetchTasks, fetchMeetings, fetchBalance, fetchTransactions]);
+  }, [fetchTasks, fetchMeetings, fetchBalance, fetchTransactions, fetchHealthData]);
+
+  // Use useFocusEffect to refresh data when screen comes into focus
+  const { useFocusEffect } = require('@react-navigation/native');
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
 
   useEffect(() => {
-    loadData();
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 1000,
       useNativeDriver: true,
     }).start();
-  }, [loadData, fadeAnim]);
+  }, [fadeAnim]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -94,18 +101,6 @@ export const DashboardScreen = ({ navigation }: any) => {
   const greeting = getGreeting();
   const userName = user?.name || user?.email?.split('@')[0] || 'there';
 
-  // Build AI-style summary
-  const summaryParts: string[] = [];
-  if (todayMeetings.length > 0) {
-    summaryParts.push(`${todayMeetings.length} meeting${todayMeetings.length > 1 ? 's' : ''} today`);
-  }
-  if (pendingTasks.length > 0) {
-    summaryParts.push(`${pendingTasks.length} pending task${pendingTasks.length > 1 ? 's' : ''}`);
-  }
-  if (yesterdayExpenses > 0) {
-    summaryParts.push(`Spent ${formatCurrency(yesterdayExpenses)} yesterday`);
-  }
-
   const expensesToday = (transactions || [])
     .filter((t) => {
       const ts = new Date(t.timestamp);
@@ -113,24 +108,100 @@ export const DashboardScreen = ({ navigation }: any) => {
     })
     .reduce((sum, t) => sum + t.amount, 0);
 
+  const dynamicStyles = StyleSheet.create({
+    safe: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    greeting: {
+      fontSize: FontSizes.lg,
+      color: colors.textSecondary,
+      fontWeight: FontWeights.medium,
+    },
+    userName: {
+      fontSize: FontSizes.xxxl,
+      fontWeight: FontWeights.bold,
+      color: colors.textPrimary,
+      marginTop: Spacing.xxs,
+    },
+    statValue: {
+      fontSize: FontSizes.xxl,
+      fontWeight: FontWeights.bold,
+      color: colors.textPrimary,
+    },
+    statLabel: {
+      fontSize: FontSizes.xs,
+      color: colors.textTertiary,
+      marginTop: Spacing.xxs,
+    },
+    balanceLabel: {
+      fontSize: FontSizes.sm,
+      color: colors.textInverse,
+      fontWeight: FontWeights.medium,
+      opacity: 0.8,
+    },
+    balanceAmount: {
+      fontSize: FontSizes.display,
+      fontWeight: FontWeights.bold,
+      color: colors.textInverse,
+      marginBottom: Spacing.sm,
+    },
+    sectionTitle: {
+      fontSize: FontSizes.md,
+      fontWeight: FontWeights.semibold,
+      color: colors.textPrimary,
+      marginBottom: Spacing.sm,
+    },
+    meetingTitle: {
+      fontSize: FontSizes.md,
+      fontWeight: FontWeights.medium,
+      color: colors.textPrimary,
+    },
+    meetingTime: {
+      fontSize: FontSizes.sm,
+      color: colors.textTertiary,
+      marginTop: 2,
+    },
+    expenseMerchant: {
+      fontSize: FontSizes.md,
+      fontWeight: FontWeights.medium,
+      color: colors.textPrimary,
+    },
+    expenseCategory: {
+      fontSize: FontSizes.sm,
+      color: colors.textTertiary,
+      marginTop: 2,
+    },
+    healthTitle: {
+      fontSize: FontSizes.md,
+      fontWeight: FontWeights.medium,
+      color: colors.textSecondary,
+    },
+    healthSubtitle: {
+      fontSize: FontSizes.sm,
+      color: colors.textTertiary,
+      marginTop: 2,
+    },
+  });
+
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={dynamicStyles.safe} edges={['top']}>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
       >
         <Animated.View style={{ opacity: fadeAnim }}>
           {/* Greeting */}
           <View style={styles.greetingSection}>
-            <Text style={styles.greeting}>{greeting},</Text>
-            <Text style={styles.userName}>{userName} ✨</Text>
+            <Text style={dynamicStyles.greeting}>{greeting},</Text>
+            <Text style={dynamicStyles.userName}>{userName} ✨</Text>
           </View>
 
-          {/* AI Daily Brief (V2) */}
+          {/* AI Daily Brief */}
           <DailyBrief 
             userName={userName}
             pendingTasks={pendingTasks.length}
@@ -139,56 +210,54 @@ export const DashboardScreen = ({ navigation }: any) => {
             navigation={navigation}
           />
 
-
-
           {/* Quick Stats Row */}
           <View style={styles.statsRow}>
             <Card
               style={styles.statCard}
               onPress={() => navigation.navigate('Tasks')}
             >
-              <View style={[styles.statIcon, { backgroundColor: Colors.primaryLight + '20' }]}>
-                <Ionicons name="checkmark-circle" size={22} color={Colors.primary} />
+              <View style={[styles.statIcon, { backgroundColor: colors.primary + '20' }]}>
+                <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
               </View>
-              <Text style={styles.statValue}>{pendingTasks.length}</Text>
-              <Text style={styles.statLabel}>Pending Tasks</Text>
+              <Text style={dynamicStyles.statValue}>{pendingTasks.length}</Text>
+              <Text style={dynamicStyles.statLabel}>Pending Tasks</Text>
             </Card>
 
             <Card
               style={styles.statCard}
               onPress={() => navigation.navigate('Meetings')}
             >
-              <View style={[styles.statIcon, { backgroundColor: Colors.secondaryLight + '20' }]}>
-                <Ionicons name="calendar" size={22} color={Colors.secondary} />
+              <View style={[styles.statIcon, { backgroundColor: colors.secondary + '20' }]}>
+                <Ionicons name="calendar" size={22} color={colors.secondary} />
               </View>
-              <Text style={styles.statValue}>{todayMeetings.length}</Text>
-              <Text style={styles.statLabel}>Meetings Today</Text>
+              <Text style={dynamicStyles.statValue}>{todayMeetings.length}</Text>
+              <Text style={dynamicStyles.statLabel}>Meetings Today</Text>
             </Card>
           </View>
 
           {/* Balance Card */}
           <Card
-            style={styles.balanceCard}
+            style={[styles.balanceCard, { backgroundColor: colors.primary }]}
             variant="elevated"
             onPress={() => navigation.navigate('Finance')}
           >
             <View style={styles.balanceHeader}>
-              <Text style={styles.balanceLabel}>Current Balance</Text>
-              <Ionicons name="wallet" size={22} color={Colors.primaryLight} />
+              <Text style={dynamicStyles.balanceLabel}>Current Balance</Text>
+              <Ionicons name="wallet" size={22} color={colors.textInverse} />
             </View>
-            <Text style={styles.balanceAmount}>
+            <Text style={dynamicStyles.balanceAmount}>
               {balance ? formatCurrency(balance.currentBalance) : '₹0'}
             </Text>
             <View style={styles.balanceRow}>
               <View style={styles.balanceMini}>
-                <Ionicons name="arrow-up-circle" size={16} color={Colors.credit} />
-                <Text style={[styles.balanceMiniText, { color: Colors.credit }]}>
+                <Ionicons name="arrow-up-circle" size={16} color={colors.success} />
+                <Text style={[styles.balanceMiniText, { color: colors.success }]}>
                   {balance ? formatCurrency(balance.totalCredits) : '₹0'}
                 </Text>
               </View>
               <View style={styles.balanceMini}>
-                <Ionicons name="arrow-down-circle" size={16} color={Colors.debit} />
-                <Text style={[styles.balanceMiniText, { color: Colors.debit }]}>
+                <Ionicons name="arrow-down-circle" size={16} color={isDark ? '#F87171' : '#EF4444'} />
+                <Text style={[styles.balanceMiniText, { color: isDark ? '#F87171' : '#EF4444' }]}>
                   {balance ? formatCurrency(balance.totalDebits) : '₹0'}
                 </Text>
               </View>
@@ -198,14 +267,14 @@ export const DashboardScreen = ({ navigation }: any) => {
           {/* Today's Meetings */}
           {todayMeetings.length > 0 && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Today's Meetings</Text>
+              <Text style={dynamicStyles.sectionTitle}>Today's Meetings</Text>
               {todayMeetings.slice(0, 3).map((meeting) => (
                 <Card key={meeting._id} style={styles.meetingCard}>
                   <View style={styles.meetingRow}>
-                    <View style={styles.meetingDot} />
+                    <View style={[styles.meetingDot, { backgroundColor: colors.primary }]} />
                     <View style={styles.meetingInfo}>
-                      <Text style={styles.meetingTitle}>{meeting.title}</Text>
-                      <Text style={styles.meetingTime}>
+                      <Text style={dynamicStyles.meetingTitle}>{meeting.title}</Text>
+                      <Text style={dynamicStyles.meetingTime}>
                         {formatTime(meeting.time)}
                         {meeting.location ? ` · ${meeting.location}` : ''}
                       </Text>
@@ -219,19 +288,19 @@ export const DashboardScreen = ({ navigation }: any) => {
           {/* Latest Expense */}
           {latestExpense && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Latest Expense</Text>
+              <Text style={dynamicStyles.sectionTitle}>Latest Expense</Text>
               <Card style={styles.expenseCard}>
                 <View style={styles.expenseRow}>
-                  <View style={[styles.statIcon, { backgroundColor: Colors.errorLight }]}>
-                    <Ionicons name="receipt" size={20} color={Colors.debit} />
+                  <View style={[styles.statIcon, { backgroundColor: colors.error + '20' }]}>
+                    <Ionicons name="receipt" size={20} color={colors.error} />
                   </View>
                   <View style={styles.expenseInfo}>
-                    <Text style={styles.expenseMerchant}>
+                    <Text style={dynamicStyles.expenseMerchant}>
                       {latestExpense.merchant || latestExpense.category}
                     </Text>
-                    <Text style={styles.expenseCategory}>{latestExpense.category}</Text>
+                    <Text style={dynamicStyles.expenseCategory}>{latestExpense.category}</Text>
                   </View>
-                  <Text style={styles.expenseAmount}>
+                  <Text style={[styles.expenseAmount, { color: colors.error }]}>
                     -{formatCurrency(latestExpense.amount)}
                   </Text>
                 </View>
@@ -241,7 +310,7 @@ export const DashboardScreen = ({ navigation }: any) => {
 
           {/* Health Summary Card */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Health & Wellness</Text>
+            <Text style={dynamicStyles.sectionTitle}>Health & Wellness</Text>
             <Card
               style={styles.healthCard}
               onPress={() => navigation.navigate('Health')}
@@ -251,14 +320,14 @@ export const DashboardScreen = ({ navigation }: any) => {
                   <Ionicons name="fitness" size={24} color="#8B5CF6" />
                 </View>
                 <View style={styles.healthText}>
-                  <Text style={styles.healthTitle}>Daily Health Score</Text>
-                  <Text style={styles.healthSubtitle}>
+                  <Text style={dynamicStyles.healthTitle}>Daily Health Score</Text>
+                  <Text style={dynamicStyles.healthSubtitle}>
                     {dailyStats?.healthScore 
                       ? `Your score is ${dailyStats.healthScore}% today. Tap to see more.`
                       : 'Track your fitness, nutrition, and hydration.'}
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color={Colors.textTertiary} />
+                <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
               </View>
             </Card>
           </View>
@@ -269,10 +338,6 @@ export const DashboardScreen = ({ navigation }: any) => {
 };
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
   scroll: {
     flex: 1,
   },
@@ -283,40 +348,6 @@ const styles = StyleSheet.create({
   greetingSection: {
     marginTop: Spacing.md,
     marginBottom: Spacing.lg,
-  },
-  greeting: {
-    fontSize: FontSizes.lg,
-    color: Colors.textSecondary,
-    fontWeight: FontWeights.medium,
-  },
-  userName: {
-    fontSize: FontSizes.xxxl,
-    fontWeight: FontWeights.bold,
-    color: Colors.textPrimary,
-    marginTop: Spacing.xxs,
-  },
-  summaryCard: {
-    backgroundColor: Colors.primary + '08',
-    borderWidth: 1,
-    borderColor: Colors.primary + '15',
-    marginBottom: Spacing.md,
-  },
-  summaryHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
-    marginBottom: Spacing.xs,
-  },
-  summaryTitle: {
-    fontSize: FontSizes.sm,
-    fontWeight: FontWeights.semibold,
-    color: Colors.textPrimary,
-  },
-  summaryItem: {
-    fontSize: FontSizes.sm,
-    color: Colors.textSecondary,
-    lineHeight: 22,
-    paddingLeft: Spacing.xxs,
   },
   statsRow: {
     flexDirection: 'row',
@@ -336,18 +367,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: Spacing.xs,
   },
-  statValue: {
-    fontSize: FontSizes.xxl,
-    fontWeight: FontWeights.bold,
-    color: Colors.textPrimary,
-  },
-  statLabel: {
-    fontSize: FontSizes.xs,
-    color: Colors.textTertiary,
-    marginTop: Spacing.xxs,
-  },
   balanceCard: {
-    backgroundColor: Colors.primary,
     marginBottom: Spacing.lg,
   },
   balanceHeader: {
@@ -355,17 +375,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: Spacing.xs,
-  },
-  balanceLabel: {
-    fontSize: FontSizes.sm,
-    color: Colors.primaryLight,
-    fontWeight: FontWeights.medium,
-  },
-  balanceAmount: {
-    fontSize: FontSizes.display,
-    fontWeight: FontWeights.bold,
-    color: Colors.textInverse,
-    marginBottom: Spacing.sm,
   },
   balanceRow: {
     flexDirection: 'row',
@@ -383,12 +392,6 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: Spacing.lg,
   },
-  sectionTitle: {
-    fontSize: FontSizes.md,
-    fontWeight: FontWeights.semibold,
-    color: Colors.textPrimary,
-    marginBottom: Spacing.sm,
-  },
   meetingCard: {
     marginBottom: Spacing.xs,
   },
@@ -400,21 +403,10 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: Colors.primary,
     marginRight: Spacing.sm,
   },
   meetingInfo: {
     flex: 1,
-  },
-  meetingTitle: {
-    fontSize: FontSizes.md,
-    fontWeight: FontWeights.medium,
-    color: Colors.textPrimary,
-  },
-  meetingTime: {
-    fontSize: FontSizes.sm,
-    color: Colors.textTertiary,
-    marginTop: 2,
   },
   expenseCard: {},
   expenseRow: {
@@ -425,20 +417,9 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: Spacing.sm,
   },
-  expenseMerchant: {
-    fontSize: FontSizes.md,
-    fontWeight: FontWeights.medium,
-    color: Colors.textPrimary,
-  },
-  expenseCategory: {
-    fontSize: FontSizes.sm,
-    color: Colors.textTertiary,
-    marginTop: 2,
-  },
   expenseAmount: {
     fontSize: FontSizes.md,
     fontWeight: FontWeights.semibold,
-    color: Colors.debit,
   },
   healthCard: {
     borderStyle: 'dashed',
@@ -450,15 +431,5 @@ const styles = StyleSheet.create({
   },
   healthText: {
     flex: 1,
-  },
-  healthTitle: {
-    fontSize: FontSizes.md,
-    fontWeight: FontWeights.medium,
-    color: Colors.textSecondary,
-  },
-  healthSubtitle: {
-    fontSize: FontSizes.sm,
-    color: Colors.textTertiary,
-    marginTop: 2,
   },
 });

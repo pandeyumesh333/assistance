@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, FontSizes, FontWeights, Spacing } from '../constants/theme';
+import { FontSizes, FontWeights, Spacing } from '../constants/theme';
+import { useTheme } from '../hooks/useTheme';
 
 interface EmptyStateProps {
   icon: keyof typeof Ionicons.glyphMap;
@@ -18,16 +19,48 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   actionLabel,
   onAction,
 }) => {
+  const { colors } = useTheme();
+
+  const dynamicStyles = StyleSheet.create({
+    iconContainer: {
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      backgroundColor: colors.borderLight,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: Spacing.md,
+    },
+    title: {
+      fontSize: FontSizes.lg,
+      fontWeight: FontWeights.semibold,
+      color: colors.textPrimary,
+      textAlign: 'center',
+      marginBottom: Spacing.xxs,
+    },
+    subtitle: {
+      fontSize: FontSizes.sm,
+      color: colors.textTertiary,
+      textAlign: 'center',
+      lineHeight: 20,
+    },
+    actionText: {
+      fontSize: FontSizes.md,
+      fontWeight: FontWeights.semibold,
+      color: colors.primary,
+    },
+  });
+
   return (
     <View style={styles.container}>
-      <View style={styles.iconContainer}>
-        <Ionicons name={icon} size={48} color={Colors.textTertiary} />
+      <View style={dynamicStyles.iconContainer}>
+        <Ionicons name={icon} size={48} color={colors.textTertiary} />
       </View>
-      <Text style={styles.title}>{title}</Text>
-      {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+      <Text style={dynamicStyles.title}>{title}</Text>
+      {subtitle && <Text style={dynamicStyles.subtitle}>{subtitle}</Text>}
       {actionLabel && onAction && (
         <TouchableOpacity style={styles.action} onPress={onAction}>
-          <Text style={styles.actionText}>{actionLabel}</Text>
+          <Text style={dynamicStyles.actionText}>{actionLabel}</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -42,36 +75,9 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.massive,
     paddingHorizontal: Spacing.xxl,
   },
-  iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: Colors.borderLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: Spacing.md,
-  },
-  title: {
-    fontSize: FontSizes.lg,
-    fontWeight: FontWeights.semibold,
-    color: Colors.textPrimary,
-    textAlign: 'center',
-    marginBottom: Spacing.xxs,
-  },
-  subtitle: {
-    fontSize: FontSizes.sm,
-    color: Colors.textTertiary,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
   action: {
     marginTop: Spacing.md,
     paddingVertical: Spacing.xs,
     paddingHorizontal: Spacing.lg,
-  },
-  actionText: {
-    fontSize: FontSizes.md,
-    fontWeight: FontWeights.semibold,
-    color: Colors.primary,
   },
 });

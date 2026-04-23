@@ -15,23 +15,26 @@ import { EmptyState } from '../../components/EmptyState';
 import { useTaskStore } from '../../stores/taskStore';
 import { Task } from '../../types';
 import { formatDate, getPriorityColor } from '../../utils/helpers';
+import { useTheme } from '../../hooks/useTheme';
 import {
-  Colors,
   FontSizes,
   FontWeights,
   Spacing,
   BorderRadius,
-  Shadows,
 } from '../../constants/theme';
 
 export const TaskListScreen = ({ navigation }: any) => {
   const { tasks, fetchTasks, toggleComplete, deleteTask, isLoading } = useTaskStore();
+  const { colors, isDark } = useTheme();
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
   const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    fetchTasks();
-  }, []);
+  const { useFocusEffect } = require('@react-navigation/native');
+  useFocusEffect(
+    useCallback(() => {
+      fetchTasks();
+    }, [fetchTasks])
+  );
 
   const filteredTasks = tasks.filter((t) => {
     if (filter === 'pending') return !t.completed;
@@ -56,6 +59,45 @@ export const TaskListScreen = ({ navigation }: any) => {
     ]);
   };
 
+  const dynamicStyles = StyleSheet.create({
+    safe: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    headerTitle: {
+      fontSize: FontSizes.xxl,
+      fontWeight: FontWeights.bold,
+      color: colors.textPrimary,
+    },
+    taskTitle: {
+      fontSize: FontSizes.md,
+      fontWeight: FontWeights.medium,
+      color: colors.textPrimary,
+      marginBottom: Spacing.xxs,
+    },
+    taskTitleCompleted: {
+      textDecorationLine: 'line-through',
+      color: colors.textTertiary,
+    },
+    filterTab: {
+      paddingVertical: Spacing.xs,
+      paddingHorizontal: Spacing.md,
+      borderRadius: BorderRadius.full,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    filterText: {
+      fontSize: FontSizes.sm,
+      fontWeight: FontWeights.medium,
+      color: colors.textSecondary,
+    },
+    dueDate: {
+      fontSize: FontSizes.xs,
+      color: colors.textTertiary,
+    },
+  });
+
   const renderTask = ({ item }: { item: Task }) => (
     <Card style={styles.taskCard}>
       <TouchableOpacity
@@ -66,20 +108,21 @@ export const TaskListScreen = ({ navigation }: any) => {
         <TouchableOpacity
           style={[
             styles.checkbox,
-            item.completed && styles.checkboxChecked,
+            { borderColor: colors.border },
+            item.completed && { backgroundColor: colors.secondary, borderColor: colors.secondary },
           ]}
           onPress={() => toggleComplete(item._id, !item.completed)}
         >
           {item.completed && (
-            <Ionicons name="checkmark" size={14} color={Colors.textInverse} />
+            <Ionicons name="checkmark" size={14} color="#FFFFFF" />
           )}
         </TouchableOpacity>
 
         <View style={styles.taskInfo}>
           <Text
             style={[
-              styles.taskTitle,
-              item.completed && styles.taskTitleCompleted,
+              dynamicStyles.taskTitle,
+              item.completed && dynamicStyles.taskTitleCompleted,
             ]}
             numberOfLines={1}
           >
@@ -102,10 +145,10 @@ export const TaskListScreen = ({ navigation }: any) => {
               </Text>
             </View>
             {item.dueDate && (
-              <Text style={styles.dueDate}>{formatDate(item.dueDate)}</Text>
+              <Text style={dynamicStyles.dueDate}>{formatDate(item.dueDate)}</Text>
             )}
             {item.recurring !== 'none' && (
-              <Ionicons name="repeat" size={14} color={Colors.textTertiary} />
+              <Ionicons name="repeat" size={14} color={colors.textTertiary} />
             )}
           </View>
         </View>
@@ -114,21 +157,21 @@ export const TaskListScreen = ({ navigation }: any) => {
           style={styles.deleteBtn}
           onPress={() => handleDelete(item._id, item.title)}
         >
-          <Ionicons name="trash-outline" size={18} color={Colors.textTertiary} />
+          <Ionicons name="trash-outline" size={18} color={colors.textTertiary} />
         </TouchableOpacity>
       </TouchableOpacity>
     </Card>
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={dynamicStyles.safe} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Tasks</Text>
+        <Text style={dynamicStyles.headerTitle}>Tasks</Text>
         <TouchableOpacity
-          style={styles.addButton}
+          style={[styles.addButton, { backgroundColor: colors.primary }]}
           onPress={() => navigation.navigate('TaskForm')}
         >
-          <Ionicons name="add" size={24} color={Colors.textInverse} />
+          <Ionicons name="add" size={24} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
 
@@ -137,13 +180,16 @@ export const TaskListScreen = ({ navigation }: any) => {
         {(['all', 'pending', 'completed'] as const).map((f) => (
           <TouchableOpacity
             key={f}
-            style={[styles.filterTab, filter === f && styles.filterTabActive]}
+            style={[
+              dynamicStyles.filterTab, 
+              filter === f && { backgroundColor: colors.primary, borderColor: colors.primary }
+            ]}
             onPress={() => setFilter(f)}
           >
             <Text
               style={[
-                styles.filterText,
-                filter === f && styles.filterTextActive,
+                dynamicStyles.filterText,
+                filter === f && { color: '#FFFFFF' },
               ]}
             >
               {f.charAt(0).toUpperCase() + f.slice(1)}
@@ -159,7 +205,7 @@ export const TaskListScreen = ({ navigation }: any) => {
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
         ListEmptyComponent={
           <EmptyState
@@ -176,10 +222,6 @@ export const TaskListScreen = ({ navigation }: any) => {
 };
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -187,45 +229,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
   },
-  headerTitle: {
-    fontSize: FontSizes.xxl,
-    fontWeight: FontWeights.bold,
-    color: Colors.textPrimary,
-  },
   addButton: {
     width: 40,
     height: 40,
     borderRadius: BorderRadius.md,
-    backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    ...Shadows.sm,
   },
   filterRow: {
     flexDirection: 'row',
     paddingHorizontal: Spacing.lg,
     marginBottom: Spacing.md,
     gap: Spacing.xs,
-  },
-  filterTab: {
-    paddingVertical: Spacing.xs,
-    paddingHorizontal: Spacing.md,
-    borderRadius: BorderRadius.full,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  filterTabActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-  filterText: {
-    fontSize: FontSizes.sm,
-    fontWeight: FontWeights.medium,
-    color: Colors.textSecondary,
-  },
-  filterTextActive: {
-    color: Colors.textInverse,
   },
   list: {
     paddingHorizontal: Spacing.lg,
@@ -243,27 +258,12 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: BorderRadius.sm,
     borderWidth: 2,
-    borderColor: Colors.border,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: Spacing.sm,
   },
-  checkboxChecked: {
-    backgroundColor: Colors.secondary,
-    borderColor: Colors.secondary,
-  },
   taskInfo: {
     flex: 1,
-  },
-  taskTitle: {
-    fontSize: FontSizes.md,
-    fontWeight: FontWeights.medium,
-    color: Colors.textPrimary,
-    marginBottom: Spacing.xxs,
-  },
-  taskTitleCompleted: {
-    textDecorationLine: 'line-through',
-    color: Colors.textTertiary,
   },
   taskMeta: {
     flexDirection: 'row',
@@ -279,10 +279,6 @@ const styles = StyleSheet.create({
     fontSize: FontSizes.xs,
     fontWeight: FontWeights.medium,
     textTransform: 'capitalize',
-  },
-  dueDate: {
-    fontSize: FontSizes.xs,
-    color: Colors.textTertiary,
   },
   deleteBtn: {
     padding: Spacing.xs,

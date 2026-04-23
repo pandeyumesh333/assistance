@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,13 +10,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { Card } from '../../components/Card';
 import { EmptyState } from '../../components/EmptyState';
 import { useMeetingStore } from '../../stores/meetingStore';
 import { Meeting } from '../../types';
 import { formatDate } from '../../utils/helpers';
+import { useTheme } from '../../hooks/useTheme';
 import {
-  Colors,
   FontSizes,
   FontWeights,
   Spacing,
@@ -27,10 +28,13 @@ import {
 export const MeetingListScreen = ({ navigation }: any) => {
   const { meetings, fetchMeetings, deleteMeeting, isLoading } = useMeetingStore();
   const [refreshing, setRefreshing] = useState(false);
+  const { colors, isDark } = useTheme();
 
-  useEffect(() => {
-    fetchMeetings();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchMeetings();
+    }, [])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -53,6 +57,51 @@ export const MeetingListScreen = ({ navigation }: any) => {
   const upcomingMeetings = meetings.filter((m) => new Date(m.time) >= now);
   const pastMeetings = meetings.filter((m) => new Date(m.time) < now);
 
+  const dynamicStyles = StyleSheet.create({
+    safe: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    headerTitle: {
+      fontSize: FontSizes.xxl,
+      fontWeight: FontWeights.bold,
+      color: colors.textPrimary,
+    },
+    addButton: {
+      width: 40,
+      height: 40,
+      borderRadius: BorderRadius.md,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...Shadows.sm,
+    },
+    timeBlock: {
+      backgroundColor: colors.primary + '12',
+      borderRadius: BorderRadius.sm,
+      paddingHorizontal: Spacing.sm,
+      paddingVertical: Spacing.xs,
+      marginRight: Spacing.sm,
+      minWidth: 70,
+      alignItems: 'center',
+    },
+    timeText: {
+      fontSize: FontSizes.sm,
+      fontWeight: FontWeights.semibold,
+      color: colors.primary,
+    },
+    meetingTitle: {
+      fontSize: FontSizes.md,
+      fontWeight: FontWeights.medium,
+      color: colors.textPrimary,
+      marginBottom: 2,
+    },
+    metaText: {
+      fontSize: FontSizes.xs,
+      color: colors.textTertiary,
+    },
+  });
+
   const renderMeeting = ({ item }: { item: Meeting }) => {
     const isPast = new Date(item.time) < now;
     return (
@@ -63,11 +112,11 @@ export const MeetingListScreen = ({ navigation }: any) => {
         <View style={styles.meetingRow}>
           <View
             style={[
-              styles.timeBlock,
-              isPast && { backgroundColor: Colors.borderLight },
+              dynamicStyles.timeBlock,
+              isPast && { backgroundColor: colors.borderLight },
             ]}
           >
-            <Text style={[styles.timeText, isPast && { color: Colors.textTertiary }]}>
+            <Text style={[dynamicStyles.timeText, isPast && { color: colors.textTertiary }]}>
               {new Date(item.time).toLocaleTimeString([], {
                 hour: '2-digit',
                 minute: '2-digit',
@@ -77,7 +126,7 @@ export const MeetingListScreen = ({ navigation }: any) => {
 
           <View style={styles.meetingInfo}>
             <Text
-              style={[styles.meetingTitle, isPast && styles.pastText]}
+              style={[dynamicStyles.meetingTitle, isPast && { color: colors.textTertiary }]}
               numberOfLines={1}
             >
               {item.title}
@@ -88,14 +137,14 @@ export const MeetingListScreen = ({ navigation }: any) => {
                   <Ionicons
                     name="location-outline"
                     size={14}
-                    color={Colors.textTertiary}
+                    color={colors.textTertiary}
                   />
-                  <Text style={styles.metaText} numberOfLines={1}>
+                  <Text style={dynamicStyles.metaText} numberOfLines={1}>
                     {item.location}
                   </Text>
                 </View>
               ) : null}
-              <Text style={styles.metaText}>{formatDate(item.time)}</Text>
+              <Text style={dynamicStyles.metaText}>{formatDate(item.time)}</Text>
             </View>
           </View>
 
@@ -103,7 +152,7 @@ export const MeetingListScreen = ({ navigation }: any) => {
             style={styles.deleteBtn}
             onPress={() => handleDelete(item._id, item.title)}
           >
-            <Ionicons name="trash-outline" size={18} color={Colors.textTertiary} />
+            <Ionicons name="trash-outline" size={18} color={colors.textTertiary} />
           </TouchableOpacity>
         </View>
       </Card>
@@ -113,14 +162,14 @@ export const MeetingListScreen = ({ navigation }: any) => {
   const allMeetings = [...upcomingMeetings, ...pastMeetings];
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={dynamicStyles.safe} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Meetings</Text>
+        <Text style={dynamicStyles.headerTitle}>Meetings</Text>
         <TouchableOpacity
-          style={styles.addButton}
+          style={dynamicStyles.addButton}
           onPress={() => navigation.navigate('MeetingForm')}
         >
-          <Ionicons name="add" size={24} color={Colors.textInverse} />
+          <Ionicons name="add" size={24} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
 
@@ -134,7 +183,7 @@ export const MeetingListScreen = ({ navigation }: any) => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={Colors.primary}
+            tintColor={colors.primary}
           />
         }
         ListEmptyComponent={
@@ -152,30 +201,12 @@ export const MeetingListScreen = ({ navigation }: any) => {
 };
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
-  },
-  headerTitle: {
-    fontSize: FontSizes.xxl,
-    fontWeight: FontWeights.bold,
-    color: Colors.textPrimary,
-  },
-  addButton: {
-    width: 40,
-    height: 40,
-    borderRadius: BorderRadius.md,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Shadows.sm,
   },
   list: {
     paddingHorizontal: Spacing.lg,
@@ -191,31 +222,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  timeBlock: {
-    backgroundColor: Colors.primary + '12',
-    borderRadius: BorderRadius.sm,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
-    marginRight: Spacing.sm,
-    minWidth: 70,
-    alignItems: 'center',
-  },
-  timeText: {
-    fontSize: FontSizes.sm,
-    fontWeight: FontWeights.semibold,
-    color: Colors.primary,
-  },
   meetingInfo: {
     flex: 1,
-  },
-  meetingTitle: {
-    fontSize: FontSizes.md,
-    fontWeight: FontWeights.medium,
-    color: Colors.textPrimary,
-    marginBottom: 2,
-  },
-  pastText: {
-    color: Colors.textTertiary,
   },
   meetingMeta: {
     flexDirection: 'row',
@@ -226,10 +234,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
-  },
-  metaText: {
-    fontSize: FontSizes.xs,
-    color: Colors.textTertiary,
   },
   deleteBtn: {
     padding: Spacing.xs,

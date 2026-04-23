@@ -10,6 +10,7 @@ import {
   logExercise,
   getExercises,
   updateHabits,
+  updateHabitsList,
   getHabits,
   getAnalytics,
   startWorkout,
@@ -33,6 +34,7 @@ router.route('/sleep').post(logSleep);
 router.route('/exercise').post(logExercise);
 router.route('/exercises/library').get(getExercises);
 router.route('/habits').get(getHabits).post(updateHabits);
+router.route('/habits/list').post(updateHabitsList);
 router.route('/analytics').get(getAnalytics);
 
 router.route('/workout/active').get(getActiveWorkout);

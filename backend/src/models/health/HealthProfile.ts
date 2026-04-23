@@ -9,6 +9,7 @@ export interface IHealthProfile extends Document {
   activityLevel: 'sedentary' | 'lightly_active' | 'moderately_active' | 'very_active' | 'extra_active';
   fitnessGoal: 'weight_loss' | 'maintenance' | 'muscle_gain';
   bmi: number;
+  habitsList: { id: string; label: string; icon: string }[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -31,6 +32,16 @@ const healthProfileSchema = new Schema<IHealthProfile>(
       required: true,
     },
     bmi: { type: Number, required: true },
+    habitsList: {
+      type: [{ id: String, label: String, icon: String }],
+      default: [
+        { id: 'walkCompleted', label: '10k Steps Walked', icon: 'walk' },
+        { id: 'hydrationCompleted', label: 'Stayed Hydrated', icon: 'water' },
+        { id: 'sleepBeforeMidnight', label: 'Slept before 12 AM', icon: 'moon' },
+        { id: 'meditationCompleted', label: 'Daily Meditation', icon: 'leaf' },
+        { id: 'stretchingCompleted', label: 'Daily Stretching', icon: 'body' },
+      ],
+    },
   },
   { timestamps: true }
 );

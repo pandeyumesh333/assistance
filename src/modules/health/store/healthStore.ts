@@ -21,6 +21,7 @@ interface HealthState {
   logSleep: (data: any) => Promise<void>;
   logExercise: (data: any) => Promise<void>;
   updateHabits: (data: any) => Promise<void>;
+  updateHabitsList: (habitsList: any[]) => Promise<void>;
   fetchAnalytics: (days?: number) => Promise<void>;
   
   // Workout Sessions
@@ -127,6 +128,15 @@ export const useHealthStore = create<HealthState>((set, get) => ({
     try {
       const res = await healthAPI.updateHabits(data);
       set({ habits: res.data });
+    } catch (error: any) {
+      set({ error: error.message });
+    }
+  },
+  
+  updateHabitsList: async (habitsList: any[]) => {
+    try {
+      const res = await healthAPI.updateHabitsList(habitsList);
+      set({ profile: res.data });
     } catch (error: any) {
       set({ error: error.message });
     }

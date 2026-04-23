@@ -2,9 +2,9 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from './Card';
-import { Colors, FontSizes, FontWeights, Spacing } from '../constants/theme';
+import { FontSizes, FontWeights, Spacing } from '../constants/theme';
 import { formatCurrency } from '../utils/helpers';
-
+import { useTheme } from '../hooks/useTheme';
 import { useHealthStore } from '../modules/health/store/healthStore';
 
 interface DailyBriefProps {
@@ -17,6 +17,7 @@ interface DailyBriefProps {
 
 export const DailyBrief = ({ pendingTasks, meetingsCount, expensesToday, userName, navigation }: DailyBriefProps) => {
   const { dailyStats, targets } = useHealthStore();
+  const { colors } = useTheme();
 
   const getBriefMessage = () => {
     let message = `Good day, ${userName}! `;
@@ -48,32 +49,51 @@ export const DailyBrief = ({ pendingTasks, meetingsCount, expensesToday, userNam
     return message;
   };
 
+  const dynamicStyles = StyleSheet.create({
+    container: {
+      backgroundColor: colors.surface,
+      marginBottom: Spacing.lg,
+      padding: Spacing.lg,
+      borderLeftWidth: 4,
+      borderLeftColor: colors.primary,
+    },
+    title: {
+      fontSize: FontSizes.md,
+      fontWeight: FontWeights.bold,
+      color: colors.textPrimary,
+    },
+    message: {
+      fontSize: FontSizes.md,
+      color: colors.textSecondary,
+      lineHeight: 22,
+      marginBottom: Spacing.md,
+    },
+    footerText: {
+      fontSize: FontSizes.xs,
+      color: colors.textTertiary,
+      fontWeight: FontWeights.medium,
+    },
+  });
+
   return (
-    <Card style={styles.container} variant="elevated">
+    <Card style={dynamicStyles.container} variant="elevated">
       <View style={styles.header}>
-        <View style={styles.iconBg}>
-          <Ionicons name="sparkles" size={20} color={Colors.primary} />
+        <View style={[styles.iconBg, { backgroundColor: colors.primary + '15' }]}>
+          <Ionicons name="sparkles" size={20} color={colors.primary} />
         </View>
-        <Text style={styles.title}>AI Daily Brief</Text>
+        <Text style={dynamicStyles.title}>AI Daily Brief</Text>
       </View>
-      <Text style={styles.message}>{getBriefMessage()}</Text>
+      <Text style={dynamicStyles.message}>{getBriefMessage()}</Text>
       
       <View style={styles.footer}>
-        <View style={styles.dot} />
-        <Text style={styles.footerText}>Assistant is active</Text>
+        <View style={[styles.dot, { backgroundColor: colors.secondary }]} />
+        <Text style={dynamicStyles.footerText}>Assistant is active</Text>
       </View>
     </Card>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: Colors.surface,
-    marginBottom: Spacing.lg,
-    padding: Spacing.lg,
-    borderLeftWidth: 4,
-    borderLeftColor: Colors.primary,
-  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -84,20 +104,8 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: Colors.primary + '15',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  title: {
-    fontSize: FontSizes.md,
-    fontWeight: FontWeights.bold,
-    color: Colors.textPrimary,
-  },
-  message: {
-    fontSize: FontSizes.md,
-    color: Colors.textSecondary,
-    lineHeight: 22,
-    marginBottom: Spacing.md,
   },
   footer: {
     flexDirection: 'row',
@@ -108,11 +116,5 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: Colors.secondary,
-  },
-  footerText: {
-    fontSize: FontSizes.xs,
-    color: Colors.textTertiary,
-    fontWeight: FontWeights.medium,
   },
 });

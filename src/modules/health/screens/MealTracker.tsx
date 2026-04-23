@@ -14,7 +14,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useHealthStore } from '../store/healthStore';
 import { MacroProgressBar } from '../components/MacroProgressBar';
 import { Card } from '../../../components/Card';
-import { Colors, FontSizes, FontWeights, Spacing, BorderRadius } from '../../../constants/theme';
+import { useTheme } from '../../../hooks/useTheme';
+import { FontSizes, FontWeights, Spacing, BorderRadius } from '../../../constants/theme';
 import { format } from 'date-fns';
 
 const QUICK_ADD_FOODS = [
@@ -30,6 +31,7 @@ const QUICK_ADD_FOODS = [
 
 export const MealTracker = ({ navigation }: any) => {
   const { dailyStats, targets, meals, addMeal } = useHealthStore();
+  const { colors, isDark } = useTheme();
   const [modalVisible, setModalVisible] = useState(false);
   const [customMeal, setCustomMeal] = useState({
     name: '',
@@ -43,7 +45,7 @@ export const MealTracker = ({ navigation }: any) => {
   const handleQuickAdd = async (food: any) => {
     try {
       await addMeal({
-        mealType: 'snack', // Default for quick add
+        mealType: 'snack',
         foodName: food.name,
         calories: food.cal,
         protein: food.prot,
@@ -79,20 +81,99 @@ export const MealTracker = ({ navigation }: any) => {
     }
   };
 
+  const dynamicStyles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    headerTitle: {
+      fontSize: FontSizes.lg,
+      fontWeight: FontWeights.bold,
+      color: colors.textPrimary,
+    },
+    sectionTitle: {
+      fontSize: FontSizes.md,
+      fontWeight: FontWeights.bold,
+      color: colors.textPrimary,
+      marginBottom: Spacing.md,
+    },
+    quickAddCard: {
+      backgroundColor: colors.surface,
+      padding: Spacing.md,
+      borderRadius: BorderRadius.lg,
+      marginRight: Spacing.md,
+      alignItems: 'center',
+      width: 100,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    quickAddName: {
+      fontSize: FontSizes.sm,
+      fontWeight: FontWeights.bold,
+      color: colors.textPrimary,
+    },
+    mealName: {
+      fontSize: FontSizes.md,
+      fontWeight: FontWeights.semibold,
+      color: colors.textPrimary,
+    },
+    mealCal: {
+      fontSize: FontSizes.md,
+      fontWeight: FontWeights.bold,
+      color: colors.textPrimary,
+    },
+    modalContent: {
+      backgroundColor: colors.background,
+      borderTopLeftRadius: BorderRadius.xxl,
+      borderTopRightRadius: BorderRadius.xxl,
+      padding: Spacing.lg,
+      maxHeight: '80%',
+    },
+    inputLabel: {
+      fontSize: FontSizes.sm,
+      fontWeight: FontWeights.semibold,
+      color: colors.textSecondary,
+      marginBottom: Spacing.xs,
+    },
+    input: {
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: BorderRadius.md,
+      padding: Spacing.md,
+      fontSize: FontSizes.md,
+      color: colors.textPrimary,
+    },
+    inputGroup: {
+      marginBottom: Spacing.lg,
+    },
+    typeButton: {
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.sm,
+      borderRadius: BorderRadius.full,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+    typeText: {
+      fontSize: FontSizes.sm,
+      color: colors.textSecondary,
+    },
+  });
+
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={dynamicStyles.container} edges={['top']}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
+          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Nutrition Tracker</Text>
+        <Text style={dynamicStyles.headerTitle}>Nutrition Tracker</Text>
         <TouchableOpacity onPress={() => setModalVisible(true)}>
-          <Ionicons name="add-circle" size={28} color={Colors.primary} />
+          <Ionicons name="add-circle" size={28} color={colors.primary} />
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Progress Bars */}
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <Card style={styles.progressCard}>
           <MacroProgressBar
             label="Calories"
@@ -114,7 +195,7 @@ export const MealTracker = ({ navigation }: any) => {
             <View style={{ flex: 1 }}>
               <MacroProgressBar
                 label="Carbs"
-                current={0} // We should add this to dailyStats or calculate from meals
+                current={0}
                 target={targets?.carbsTargetGrams || 250}
                 unit="g"
                 color="#3B82F6"
@@ -123,25 +204,23 @@ export const MealTracker = ({ navigation }: any) => {
           </View>
         </Card>
 
-        {/* Quick Add Section */}
-        <Text style={styles.sectionTitle}>Quick Add Indian Foods</Text>
+        <Text style={dynamicStyles.sectionTitle}>Quick Add Indian Foods</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.quickAddScroll}>
           {QUICK_ADD_FOODS.map((food) => (
             <TouchableOpacity
               key={food.name}
-              style={styles.quickAddCard}
+              style={dynamicStyles.quickAddCard}
               onPress={() => handleQuickAdd(food)}
             >
               <Text style={styles.quickAddEmoji}>{getFoodEmoji(food.name)}</Text>
-              <Text style={styles.quickAddName}>{food.name}</Text>
+              <Text style={dynamicStyles.quickAddName}>{food.name}</Text>
               <Text style={styles.quickAddCal}>{food.cal} kcal</Text>
               <Text style={styles.quickAddUnit}>{food.unit}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
 
-        {/* Meal History */}
-        <Text style={styles.sectionTitle}>Today's Meals</Text>
+        <Text style={dynamicStyles.sectionTitle}>Today's Meals</Text>
         {meals.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyStateText}>No meals logged today.</Text>
@@ -151,11 +230,11 @@ export const MealTracker = ({ navigation }: any) => {
             <Card key={meal._id || index} style={styles.mealItem}>
               <View style={styles.mealInfo}>
                 <Text style={styles.mealType}>{meal.mealType.toUpperCase()}</Text>
-                <Text style={styles.mealName}>{meal.foodName}</Text>
+                <Text style={dynamicStyles.mealName}>{meal.foodName}</Text>
                 <Text style={styles.mealTime}>{format(new Date(meal.timestamp), 'hh:mm a')}</Text>
               </View>
               <View style={styles.mealStats}>
-                <Text style={styles.mealCal}>{meal.calories} kcal</Text>
+                <Text style={dynamicStyles.mealCal}>{meal.calories} kcal</Text>
                 <Text style={styles.mealMacros}>P: {meal.protein}g | C: {meal.carbs}g</Text>
               </View>
             </Card>
@@ -163,44 +242,46 @@ export const MealTracker = ({ navigation }: any) => {
         )}
       </ScrollView>
 
-      {/* Add Custom Meal Modal */}
       <Modal visible={modalVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={dynamicStyles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Add Custom Meal</Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Ionicons name="close" size={24} color={Colors.textPrimary} />
+                <Ionicons name="close" size={24} color={colors.textPrimary} />
               </TouchableOpacity>
             </View>
 
-            <ScrollView>
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Food Name</Text>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={dynamicStyles.inputGroup}>
+                <Text style={dynamicStyles.inputLabel}>Food Name</Text>
                 <TextInput
-                  style={styles.input}
+                  style={dynamicStyles.input}
                   placeholder="e.g. Oats with Almonds"
+                  placeholderTextColor={colors.textTertiary}
                   value={customMeal.name}
                   onChangeText={(text) => setCustomMeal({ ...customMeal, name: text })}
                 />
               </View>
 
               <View style={styles.inputRow}>
-                <View style={[styles.inputGroup, { flex: 1, marginRight: Spacing.sm }]}>
-                  <Text style={styles.inputLabel}>Calories</Text>
+                <View style={[dynamicStyles.inputGroup, { flex: 1, marginRight: Spacing.sm }]}>
+                  <Text style={dynamicStyles.inputLabel}>Calories</Text>
                   <TextInput
-                    style={styles.input}
+                    style={dynamicStyles.input}
                     placeholder="300"
+                    placeholderTextColor={colors.textTertiary}
                     keyboardType="numeric"
                     value={customMeal.cal}
                     onChangeText={(text) => setCustomMeal({ ...customMeal, cal: text })}
                   />
                 </View>
-                <View style={[styles.inputGroup, { flex: 1 }]}>
-                  <Text style={styles.inputLabel}>Protein (g)</Text>
+                <View style={[dynamicStyles.inputGroup, { flex: 1 }]}>
+                  <Text style={dynamicStyles.inputLabel}>Protein (g)</Text>
                   <TextInput
-                    style={styles.input}
+                    style={dynamicStyles.input}
                     placeholder="15"
+                    placeholderTextColor={colors.textTertiary}
                     keyboardType="numeric"
                     value={customMeal.prot}
                     onChangeText={(text) => setCustomMeal({ ...customMeal, prot: text })}
@@ -209,21 +290,23 @@ export const MealTracker = ({ navigation }: any) => {
               </View>
 
               <View style={styles.inputRow}>
-                <View style={[styles.inputGroup, { flex: 1, marginRight: Spacing.sm }]}>
-                  <Text style={styles.inputLabel}>Carbs (g)</Text>
+                <View style={[dynamicStyles.inputGroup, { flex: 1, marginRight: Spacing.sm }]}>
+                  <Text style={dynamicStyles.inputLabel}>Carbs (g)</Text>
                   <TextInput
-                    style={styles.input}
+                    style={dynamicStyles.input}
                     placeholder="40"
+                    placeholderTextColor={colors.textTertiary}
                     keyboardType="numeric"
                     value={customMeal.carbs}
                     onChangeText={(text) => setCustomMeal({ ...customMeal, carbs: text })}
                   />
                 </View>
-                <View style={[styles.inputGroup, { flex: 1 }]}>
-                  <Text style={styles.inputLabel}>Fat (g)</Text>
+                <View style={[dynamicStyles.inputGroup, { flex: 1 }]}>
+                  <Text style={dynamicStyles.inputLabel}>Fat (g)</Text>
                   <TextInput
-                    style={styles.input}
+                    style={dynamicStyles.input}
                     placeholder="5"
+                    placeholderTextColor={colors.textTertiary}
                     keyboardType="numeric"
                     value={customMeal.fat}
                     onChangeText={(text) => setCustomMeal({ ...customMeal, fat: text })}
@@ -231,16 +314,22 @@ export const MealTracker = ({ navigation }: any) => {
                 </View>
               </View>
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Meal Type</Text>
+              <View style={dynamicStyles.inputGroup}>
+                <Text style={dynamicStyles.inputLabel}>Meal Type</Text>
                 <View style={styles.typeContainer}>
                   {['breakfast', 'lunch', 'dinner', 'snack'].map((type) => (
                     <TouchableOpacity
                       key={type}
-                      style={[styles.typeButton, customMeal.type === type && styles.activeTypeButton]}
+                      style={[
+                        dynamicStyles.typeButton,
+                        customMeal.type === type && { backgroundColor: colors.primary, borderColor: colors.primary }
+                      ]}
                       onPress={() => setCustomMeal({ ...customMeal, type })}
                     >
-                      <Text style={[styles.typeText, customMeal.type === type && styles.activeTypeText]}>
+                      <Text style={[
+                        dynamicStyles.typeText,
+                        customMeal.type === type && { color: '#FFFFFF', fontWeight: 'bold' }
+                      ]}>
                         {type.charAt(0).toUpperCase() + type.slice(1)}
                       </Text>
                     </TouchableOpacity>
@@ -248,7 +337,7 @@ export const MealTracker = ({ navigation }: any) => {
                 </View>
               </View>
 
-              <TouchableOpacity style={styles.submitButton} onPress={handleAddCustom}>
+              <TouchableOpacity style={[styles.submitButton, { backgroundColor: colors.primary }]} onPress={handleAddCustom}>
                 <Text style={styles.submitButtonText}>Log Meal</Text>
               </TouchableOpacity>
             </ScrollView>
@@ -274,21 +363,12 @@ const getFoodEmoji = (name: string) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
-  },
-  headerTitle: {
-    fontSize: FontSizes.lg,
-    fontWeight: FontWeights.bold,
-    color: Colors.textPrimary,
   },
   scrollContent: {
     padding: Spacing.lg,
@@ -300,42 +380,21 @@ const styles = StyleSheet.create({
   macroRow: {
     flexDirection: 'row',
   },
-  sectionTitle: {
-    fontSize: FontSizes.md,
-    fontWeight: FontWeights.bold,
-    color: Colors.textPrimary,
-    marginBottom: Spacing.md,
-  },
   quickAddScroll: {
     marginBottom: Spacing.xl,
-  },
-  quickAddCard: {
-    backgroundColor: Colors.textInverse,
-    padding: Spacing.md,
-    borderRadius: BorderRadius.lg,
-    marginRight: Spacing.md,
-    alignItems: 'center',
-    width: 100,
-    borderWidth: 1,
-    borderColor: Colors.primary + '10',
   },
   quickAddEmoji: {
     fontSize: 32,
     marginBottom: 4,
   },
-  quickAddName: {
-    fontSize: FontSizes.sm,
-    fontWeight: FontWeights.bold,
-    color: Colors.textPrimary,
-  },
   quickAddCal: {
     fontSize: FontSizes.xs,
-    color: Colors.primary,
+    color: '#F59E0B',
     marginTop: 2,
   },
   quickAddUnit: {
     fontSize: 10,
-    color: Colors.textTertiary,
+    color: '#94A3B8',
     marginTop: 2,
   },
   mealItem: {
@@ -349,31 +408,21 @@ const styles = StyleSheet.create({
   },
   mealType: {
     fontSize: 10,
-    fontWeight: FontWeights.bold,
-    color: Colors.primary,
+    fontWeight: 'bold',
+    color: '#4F46E5',
     marginBottom: 2,
-  },
-  mealName: {
-    fontSize: FontSizes.md,
-    fontWeight: FontWeights.semibold,
-    color: Colors.textPrimary,
   },
   mealTime: {
     fontSize: FontSizes.xs,
-    color: Colors.textTertiary,
+    color: '#94A3B8',
     marginTop: 2,
   },
   mealStats: {
     alignItems: 'flex-end',
   },
-  mealCal: {
-    fontSize: FontSizes.md,
-    fontWeight: FontWeights.bold,
-    color: Colors.textPrimary,
-  },
   mealMacros: {
     fontSize: FontSizes.xs,
-    color: Colors.textTertiary,
+    color: '#94A3B8',
     marginTop: 2,
   },
   emptyState: {
@@ -381,20 +430,13 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.xxl,
   },
   emptyStateText: {
-    color: Colors.textTertiary,
+    color: '#94A3B8',
     fontSize: FontSizes.md,
   },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: Colors.background,
-    borderTopLeftRadius: BorderRadius.xxl,
-    borderTopRightRadius: BorderRadius.xxl,
-    padding: Spacing.lg,
-    maxHeight: '80%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -404,56 +446,17 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: FontSizes.xl,
-    fontWeight: FontWeights.bold,
-    color: Colors.textPrimary,
-  },
-  inputGroup: {
-    marginBottom: Spacing.lg,
+    fontWeight: 'bold',
   },
   inputRow: {
     flexDirection: 'row',
-  },
-  inputLabel: {
-    fontSize: FontSizes.sm,
-    fontWeight: FontWeights.semibold,
-    color: Colors.textSecondary,
-    marginBottom: Spacing.xs,
-  },
-  input: {
-    backgroundColor: Colors.textInverse,
-    borderWidth: 1,
-    borderColor: Colors.primary + '20',
-    borderRadius: BorderRadius.md,
-    padding: Spacing.md,
-    fontSize: FontSizes.md,
-    color: Colors.textPrimary,
   },
   typeContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Spacing.xs,
   },
-  typeButton: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.full,
-    borderWidth: 1,
-    borderColor: Colors.primary + '20',
-  },
-  activeTypeButton: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-  typeText: {
-    fontSize: FontSizes.sm,
-    color: Colors.textSecondary,
-  },
-  activeTypeText: {
-    color: Colors.textInverse,
-    fontWeight: FontWeights.bold,
-  },
   submitButton: {
-    backgroundColor: Colors.primary,
     paddingVertical: Spacing.md,
     borderRadius: BorderRadius.full,
     alignItems: 'center',
@@ -461,8 +464,8 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xxl,
   },
   submitButtonText: {
-    color: Colors.textInverse,
+    color: '#FFFFFF',
     fontSize: FontSizes.md,
-    fontWeight: FontWeights.bold,
+    fontWeight: 'bold',
   },
 });

@@ -1,4 +1,6 @@
-export const Colors = {
+export type ThemeMode = 'light' | 'dark';
+
+export const LightColors = {
   primary: '#4F46E5',
   primaryLight: '#818CF8',
   primaryDark: '#3730A3',
@@ -30,6 +32,42 @@ export const Colors = {
   priorityMedium: '#F59E0B',
   priorityLow: '#22C55E',
 };
+
+export const DarkColors = {
+  primary: '#818CF8',
+  primaryLight: '#A5B4FC',
+  primaryDark: '#4F46E5',
+  secondary: '#4ADE80',
+  secondaryLight: '#86EFAC',
+  secondaryDark: '#22C55E',
+  background: '#0F172A', // Deep black/blue
+  surface: '#1E293B',
+  surfaceElevated: '#334155',
+  textPrimary: '#F8FAFC',
+  textSecondary: '#CBD5E1',
+  textTertiary: '#94A3B8',
+  textInverse: '#0F172A',
+  border: '#334155',
+  borderLight: '#1E293B',
+  error: '#F87171',
+  errorLight: '#450A0A',
+  warning: '#FBBF24',
+  warningLight: '#451A03',
+  success: '#4ADE80',
+  successLight: '#064E3B',
+  info: '#60A5FA',
+  infoLight: '#1E3A8A',
+  shadow: 'rgba(0, 0, 0, 0.3)',
+  overlay: 'rgba(0, 0, 0, 0.7)',
+  credit: '#4ADE80',
+  debit: '#F87171',
+  priorityHigh: '#F87171',
+  priorityMedium: '#FBBF24',
+  priorityLow: '#4ADE80',
+};
+
+// Default export for backward compatibility (will be updated by the store)
+export let Colors = LightColors;
 
 export const Spacing = {
   xxs: 4,
@@ -95,7 +133,7 @@ export const Shadows = {
   },
 };
 
-export const API_URL = process.env.EXPO_PUBLIC_API_URL ;
+export const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 export const CATEGORIES = [
   'Food',

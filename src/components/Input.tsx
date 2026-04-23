@@ -7,7 +7,8 @@ import {
   ViewStyle,
   TextInputProps,
 } from 'react-native';
-import { Colors, BorderRadius, FontSizes, Spacing, FontWeights } from '../constants/theme';
+import { BorderRadius, FontSizes, Spacing, FontWeights } from '../constants/theme';
+import { useTheme } from '../hooks/useTheme';
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -24,18 +25,52 @@ export const Input: React.FC<InputProps> = ({
   style,
   ...props
 }) => {
+  const { colors } = useTheme();
+
+  const dynamicStyles = StyleSheet.create({
+    label: {
+      fontSize: FontSizes.sm,
+      fontWeight: FontWeights.medium,
+      color: colors.textSecondary,
+      marginBottom: Spacing.xxs,
+    },
+    inputWrapper: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: BorderRadius.md,
+    },
+    inputError: {
+      borderColor: colors.error,
+    },
+    input: {
+      flex: 1,
+      fontSize: FontSizes.md,
+      color: colors.textPrimary,
+      paddingVertical: Spacing.sm,
+      paddingHorizontal: Spacing.md,
+    },
+    errorText: {
+      fontSize: FontSizes.xs,
+      color: colors.error,
+      marginTop: Spacing.xxs,
+    },
+  });
+
   return (
     <View style={[styles.container, containerStyle]}>
-      {label && <Text style={styles.label}>{label}</Text>}
-      <View style={[styles.inputWrapper, error && styles.inputError]}>
+      {label && <Text style={dynamicStyles.label}>{label}</Text>}
+      <View style={[dynamicStyles.inputWrapper, error && dynamicStyles.inputError]}>
         {icon && <View style={styles.iconWrapper}>{icon}</View>}
         <TextInput
-          style={[styles.input, icon ? styles.inputWithIcon : undefined, style]}
-          placeholderTextColor={Colors.textTertiary}
+          style={[dynamicStyles.input, icon ? styles.inputWithIcon : undefined, style]}
+          placeholderTextColor={colors.textTertiary}
           {...props}
         />
       </View>
-      {error && <Text style={styles.errorText}>{error}</Text>}
+      {error && <Text style={dynamicStyles.errorText}>{error}</Text>}
     </View>
   );
 };
@@ -44,39 +79,10 @@ const styles = StyleSheet.create({
   container: {
     marginBottom: Spacing.md,
   },
-  label: {
-    fontSize: FontSizes.sm,
-    fontWeight: FontWeights.medium,
-    color: Colors.textSecondary,
-    marginBottom: Spacing.xxs,
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: BorderRadius.md,
-  },
-  inputError: {
-    borderColor: Colors.error,
-  },
   iconWrapper: {
     paddingLeft: Spacing.sm,
   },
-  input: {
-    flex: 1,
-    fontSize: FontSizes.md,
-    color: Colors.textPrimary,
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-  },
   inputWithIcon: {
     paddingLeft: Spacing.xs,
-  },
-  errorText: {
-    fontSize: FontSizes.xs,
-    color: Colors.error,
-    marginTop: Spacing.xxs,
   },
 });

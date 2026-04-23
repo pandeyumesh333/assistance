@@ -13,7 +13,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { useAuthStore } from '../../stores/authStore';
-import { Colors, FontSizes, FontWeights, Spacing, BorderRadius } from '../../constants/theme';
+import { useTheme } from '../../hooks/useTheme';
+import { FontSizes, FontWeights, Spacing, BorderRadius } from '../../constants/theme';
 
 export const LoginScreen = ({ navigation }: any) => {
   const [email, setEmail] = useState('');
@@ -21,6 +22,7 @@ export const LoginScreen = ({ navigation }: any) => {
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
 
+  const { colors, isDark } = useTheme();
   const { login, isLoading, error, clearError } = useAuthStore();
 
   const validate = () => {
@@ -42,8 +44,57 @@ export const LoginScreen = ({ navigation }: any) => {
     }
   };
 
+  const dynamicStyles = StyleSheet.create({
+    safe: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    logoContainer: {
+      width: 64,
+      height: 64,
+      borderRadius: BorderRadius.lg,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: Spacing.lg,
+    },
+    title: {
+      fontSize: FontSizes.xxxl,
+      fontWeight: FontWeights.bold,
+      color: colors.textPrimary,
+      marginBottom: Spacing.xxs,
+    },
+    subtitle: {
+      fontSize: FontSizes.md,
+      color: colors.textSecondary,
+    },
+    errorBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.errorLight,
+      borderRadius: BorderRadius.md,
+      padding: Spacing.sm,
+      marginBottom: Spacing.md,
+      gap: Spacing.xs,
+    },
+    errorBannerText: {
+      color: colors.error,
+      fontSize: FontSizes.sm,
+      flex: 1,
+    },
+    footerText: {
+      color: colors.textSecondary,
+      fontSize: FontSizes.md,
+    },
+    linkText: {
+      color: colors.primary,
+      fontSize: FontSizes.md,
+      fontWeight: FontWeights.semibold,
+    },
+  });
+
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={dynamicStyles.safe}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.flex}
@@ -53,20 +104,20 @@ export const LoginScreen = ({ navigation }: any) => {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.header}>
-            <View style={styles.logoContainer}>
-              <Ionicons name="sparkles" size={32} color={Colors.textInverse} />
+            <View style={dynamicStyles.logoContainer}>
+              <Ionicons name="sparkles" size={32} color="#FFFFFF" />
             </View>
-            <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>
+            <Text style={dynamicStyles.title}>Welcome Back</Text>
+            <Text style={dynamicStyles.subtitle}>
               Sign in to your personal assistant
             </Text>
           </View>
 
           <View style={styles.form}>
             {error && (
-              <View style={styles.errorBanner}>
-                <Ionicons name="alert-circle" size={18} color={Colors.error} />
-                <Text style={styles.errorBannerText}>{error}</Text>
+              <View style={dynamicStyles.errorBanner}>
+                <Ionicons name="alert-circle" size={18} color={colors.error} />
+                <Text style={dynamicStyles.errorBannerText}>{error}</Text>
               </View>
             )}
 
@@ -79,7 +130,7 @@ export const LoginScreen = ({ navigation }: any) => {
               autoCapitalize="none"
               autoCorrect={false}
               error={errors.email}
-              icon={<Ionicons name="mail-outline" size={20} color={Colors.textTertiary} />}
+              icon={<Ionicons name="mail-outline" size={20} color={colors.textTertiary} />}
             />
 
             <View>
@@ -90,7 +141,7 @@ export const LoginScreen = ({ navigation }: any) => {
                 placeholder="Enter your password"
                 secureTextEntry={!showPassword}
                 error={errors.password}
-                icon={<Ionicons name="lock-closed-outline" size={20} color={Colors.textTertiary} />}
+                icon={<Ionicons name="lock-closed-outline" size={20} color={colors.textTertiary} />}
               />
               <TouchableOpacity
                 style={styles.eyeIcon}
@@ -99,7 +150,7 @@ export const LoginScreen = ({ navigation }: any) => {
                 <Ionicons
                   name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                   size={20}
-                  color={Colors.textTertiary}
+                  color={colors.textTertiary}
                 />
               </TouchableOpacity>
             </View>
@@ -113,9 +164,9 @@ export const LoginScreen = ({ navigation }: any) => {
             />
 
             <View style={styles.footer}>
-              <Text style={styles.footerText}>Don't have an account? </Text>
+              <Text style={dynamicStyles.footerText}>Don't have an account? </Text>
               <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
-                <Text style={styles.linkText}>Sign Up</Text>
+                <Text style={dynamicStyles.linkText}>Sign Up</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -126,10 +177,6 @@ export const LoginScreen = ({ navigation }: any) => {
 };
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
   flex: {
     flex: 1,
   },
@@ -142,41 +189,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: Spacing.xxxl,
   },
-  logoContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: BorderRadius.lg,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: Spacing.lg,
-  },
-  title: {
-    fontSize: FontSizes.xxxl,
-    fontWeight: FontWeights.bold,
-    color: Colors.textPrimary,
-    marginBottom: Spacing.xxs,
-  },
-  subtitle: {
-    fontSize: FontSizes.md,
-    color: Colors.textSecondary,
-  },
   form: {
     width: '100%',
-  },
-  errorBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.errorLight,
-    borderRadius: BorderRadius.md,
-    padding: Spacing.sm,
-    marginBottom: Spacing.md,
-    gap: Spacing.xs,
-  },
-  errorBannerText: {
-    color: Colors.error,
-    fontSize: FontSizes.sm,
-    flex: 1,
   },
   eyeIcon: {
     position: 'absolute',
@@ -191,14 +205,5 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     marginTop: Spacing.xl,
-  },
-  footerText: {
-    color: Colors.textSecondary,
-    fontSize: FontSizes.md,
-  },
-  linkText: {
-    color: Colors.primary,
-    fontSize: FontSizes.md,
-    fontWeight: FontWeights.semibold,
   },
 });

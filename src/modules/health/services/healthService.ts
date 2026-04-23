@@ -15,6 +15,7 @@ export const healthAPI = {
     api.get('/health/exercises/library', { params }),
   getHabits: (date: string) => api.get('/health/habits', { params: { date } }),
   updateHabits: (data: any) => api.post('/health/habits', data),
+  updateHabitsList: (habitsList: any[]) => api.post('/health/habits/list', { habitsList }),
   getAnalytics: (days: number = 7) => api.get('/health/analytics', { params: { days } }),
   startWorkout: (title?: string) => api.post('/health/workout/start', { title }),
   getActiveWorkout: () => api.get('/health/workout/active'),
