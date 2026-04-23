@@ -94,7 +94,7 @@ export const Shadows = {
   },
 };
 
-export const API_URL = 'https://assistance-q9p8.onrender.com/api';
+export const API_URL = process.env.EXPO_PUBLIC_API_URL ;
 
 export const CATEGORIES = [
   'Food',

@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '../../components/Card';
+import { DailyBrief } from '../../components/DailyBrief';
 import { useAuthStore } from '../../stores/authStore';
 import { useTaskStore } from '../../stores/taskStore';
 import { useMeetingStore } from '../../stores/meetingStore';
@@ -102,6 +103,13 @@ export const DashboardScreen = ({ navigation }: any) => {
     summaryParts.push(`Spent ${formatCurrency(yesterdayExpenses)} yesterday`);
   }
 
+  const expensesToday = (transactions || [])
+    .filter((t) => {
+      const ts = new Date(t.timestamp);
+      return t.type === 'debit' && ts >= today && ts < tomorrow;
+    })
+    .reduce((sum, t) => sum + t.amount, 0);
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView
@@ -119,20 +127,14 @@ export const DashboardScreen = ({ navigation }: any) => {
             <Text style={styles.userName}>{userName} ✨</Text>
           </View>
 
-          {/* AI Summary Card */}
-          {summaryParts.length > 0 && (
-            <Card style={styles.summaryCard} variant="elevated">
-              <View style={styles.summaryHeader}>
-                <Ionicons name="bulb" size={20} color={Colors.warning} />
-                <Text style={styles.summaryTitle}>Today's Overview</Text>
-              </View>
-              {summaryParts.map((part, i) => (
-                <Text key={i} style={styles.summaryItem}>
-                  • {part}
-                </Text>
-              ))}
-            </Card>
-          )}
+          {/* AI Daily Brief (V2) */}
+          <DailyBrief 
+            userName={userName}
+            pendingTasks={pendingTasks.length}
+            meetingsCount={todayMeetings.length}
+            expensesToday={expensesToday}
+          />
+
 
           {/* Quick Stats Row */}
           <View style={styles.statsRow}>

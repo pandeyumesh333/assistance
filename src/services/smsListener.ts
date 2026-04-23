@@ -1,8 +1,14 @@
 import { PermissionsAndroid, Platform } from 'react-native';
 // @ts-ignore
 import SmsAndroid from 'react-native-get-sms-android';
+import * as BackgroundFetch from 'expo-background-fetch';
+import * as TaskManager from 'expo-task-manager';
 import { parseSMS } from '../utils/smsParser';
 import { useFinanceStore } from '../stores/financeStore';
+
+export const BACKGROUND_SMS_SYNC_TASK = 'background-sms-sync';
+
+
 
 export const requestSMSPermission = async () => {
   if (Platform.OS !== 'android') return false;
@@ -25,6 +31,9 @@ export const requestSMSPermission = async () => {
 };
 
 export const syncRecentSMS = async () => {
+  if (!SmsAndroid || typeof SmsAndroid.list !== 'function') {
+    return;
+  }
   const hasPermission = await requestSMSPermission();
   if (!hasPermission) return;
 
@@ -65,4 +74,30 @@ export const syncRecentSMS = async () => {
     }
   );
 };
+
+// V2: Define Background Task
+TaskManager.defineTask(BACKGROUND_SMS_SYNC_TASK, async () => {
+  try {
+    await syncRecentSMS();
+    return BackgroundFetch.BackgroundFetchResult.NewData;
+  } catch (error) {
+    return BackgroundFetch.BackgroundFetchResult.Failed;
+  }
+});
+
+// V2: Register Background Task
+export const registerBackgroundSMSStore = async () => {
+  if (Platform.OS !== 'android') return;
+  
+  try {
+    await BackgroundFetch.registerTaskAsync(BACKGROUND_SMS_SYNC_TASK, {
+      minimumInterval: 15 * 60, // 15 minutes
+      stopOnTerminate: false, // Continue after reboot
+      startOnBoot: true,
+    });
+  } catch (err) {
+    // Task already registered or failed
+  }
+};
+
 
