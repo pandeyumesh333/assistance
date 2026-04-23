@@ -10,13 +10,7 @@ import {
   Modal,
   TextInput,
   KeyboardAvoidingView,
-  Dimensions,
-  ScrollView,
 } from 'react-native';
-import {
-  LineChart,
-  PieChart,
-} from "react-native-chart-kit";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '../../components/Card';
@@ -53,61 +47,6 @@ export const FinanceScreen = ({ navigation }: any) => {
   const [refreshing, setRefreshing] = useState(false);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [openingBalanceInput, setOpeningBalanceInput] = useState('');
-
-  // Chart configuration
-  const chartConfig = {
-    backgroundGradientFrom: Colors.surface,
-    backgroundGradientTo: Colors.surface,
-    color: (opacity = 1) => `rgba(79, 70, 229, ${opacity})`,
-    labelColor: (opacity = 1) => Colors.textSecondary,
-    strokeWidth: 2,
-    barPercentage: 0.5,
-    useShadowColorFromDataset: false,
-    decimalPlaces: 0,
-  };
-
-  // Helper to get data for Pie Chart (Expenses only)
-  const getPieChartData = (txs: Transaction[]) => {
-    const expenses = txs.filter(t => t.type === 'debit');
-    const categoryTotals: Record<string, number> = {};
-    
-    expenses.forEach(t => {
-      categoryTotals[t.category] = (categoryTotals[t.category] || 0) + t.amount;
-    });
-
-    const colors = [
-      '#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#3B82F6', 
-      '#8B5CF6', '#EC4899', '#6366F1', '#14B8A6', '#F97316'
-    ];
-
-    return Object.keys(categoryTotals).map((cat, index) => ({
-      name: cat,
-      amount: categoryTotals[cat],
-      color: colors[index % colors.length],
-      legendFontColor: Colors.textSecondary,
-      legendFontSize: 12
-    })).sort((a, b) => b.amount - a.amount).slice(0, 5);
-  };
-
-  // Helper to get data for Line Chart (Spending trend)
-  const getLineChartData = (txs: Transaction[]) => {
-    const last7Days = [...Array(7)].map((_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() - (6 - i));
-      return d.toISOString().split('T')[0];
-    });
-
-    const dailySpending = last7Days.map(date => {
-      return txs
-        .filter(t => t.type === 'debit' && t.timestamp.startsWith(date))
-        .reduce((sum, t) => sum + t.amount, 0);
-    });
-
-    return {
-      labels: last7Days.map(d => d.split('-')[2]), // Just the day
-      datasets: [{ data: dailySpending }]
-    };
-  };
 
   useEffect(() => {
     fetchTransactions();
@@ -281,40 +220,6 @@ export const FinanceScreen = ({ navigation }: any) => {
                   </View>
                 </View>
               </Card>
-            )}
-
-            {/* Charts Section (V2) */}
-            {transactions.length > 0 && (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chartsContainer}>
-                {/* Pie Chart: Expenses by Category */}
-                <Card style={styles.chartCard}>
-                  <Text style={styles.chartTitle}>Expense Breakdown</Text>
-                  <PieChart
-                    data={getPieChartData(transactions)}
-                    width={screenWidth - Spacing.lg * 4}
-                    height={200}
-                    chartConfig={chartConfig}
-                    accessor={"amount"}
-                    backgroundColor={"transparent"}
-                    paddingLeft={"15"}
-                    center={[10, 0]}
-                    absolute
-                  />
-                </Card>
-
-                {/* Line Chart: Daily Trend */}
-                <Card style={styles.chartCard}>
-                  <Text style={styles.chartTitle}>Spending Trend (Last 7 Days)</Text>
-                  <LineChart
-                    data={getLineChartData(transactions)}
-                    width={screenWidth - Spacing.lg * 4}
-                    height={200}
-                    chartConfig={chartConfig}
-                    bezier
-                    style={styles.lineChart}
-                  />
-                </Card>
-              </ScrollView>
             )}
 
             <Text style={styles.sectionTitle}>Recent Transactions</Text>

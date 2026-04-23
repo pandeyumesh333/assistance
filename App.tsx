@@ -12,8 +12,6 @@ function AppContent() {
 
   useEffect(() => {
     restoreSession();
-    // Register background SMS sync for V2
-    registerBackgroundSMSStore();
   }, []);
 
 
