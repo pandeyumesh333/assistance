@@ -29,7 +29,7 @@ import {
   Shadows,
 } from '../../constants/theme';
 
-const screenWidth = Dimensions.get("window").width;
+
 
 
 export const FinanceScreen = ({ navigation }: any) => {
@@ -380,25 +380,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
     marginTop: Spacing.xs,
   },
-  chartsContainer: {
-    marginBottom: Spacing.lg,
-    marginTop: Spacing.xs,
-  },
-  chartCard: {
-    width: screenWidth - Spacing.lg * 2,
-    marginRight: Spacing.md,
-    padding: Spacing.md,
-  },
-  chartTitle: {
-    fontSize: FontSizes.sm,
-    fontWeight: FontWeights.semibold,
-    color: Colors.textSecondary,
-    marginBottom: Spacing.sm,
-  },
-  lineChart: {
-    marginVertical: 8,
-    borderRadius: 16,
-  },
+
   txCard: {
     marginBottom: Spacing.xs,
   },
