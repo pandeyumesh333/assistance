@@ -53,58 +53,68 @@ const FinanceStackNavigator = () => (
   </FinanceStack.Navigator>
 );
 
+import { HealthStack } from './HealthStack';
+
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 // Bottom Tab Navigator
-const TabNavigator = () => (
-  <Tab.Navigator
-    screenOptions={({ route }) => ({
-      headerShown: false,
-      tabBarIcon: ({ focused, color, size }) => {
-        let iconName: keyof typeof Ionicons.glyphMap = 'home';
-
-        switch (route.name) {
-          case 'Dashboard':
-            iconName = focused ? 'home' : 'home-outline';
-            break;
-          case 'Tasks':
-            iconName = focused ? 'checkmark-circle' : 'checkmark-circle-outline';
-            break;
-          case 'Meetings':
-            iconName = focused ? 'calendar' : 'calendar-outline';
-            break;
-          case 'Finance':
-            iconName = focused ? 'wallet' : 'wallet-outline';
-            break;
-          case 'Profile':
-            iconName = focused ? 'person' : 'person-outline';
-            break;
-        }
-
-        return <Ionicons name={iconName} size={22} color={color} />;
-      },
-      tabBarActiveTintColor: Colors.primary,
-      tabBarInactiveTintColor: Colors.textTertiary,
-      tabBarStyle: {
-        backgroundColor: Colors.surface,
-        borderTopColor: Colors.borderLight,
-        borderTopWidth: 1,
-        paddingBottom: 4,
-        paddingTop: 4,
-        height: 60,
-        ...Shadows.sm,
-      },
-      tabBarLabelStyle: {
-        fontSize: FontSizes.xs,
-        fontWeight: FontWeights.medium,
-      },
-    })}
-  >
+const TabNavigator = () => {
+  const insets = useSafeAreaInsets();
+  
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarIcon: ({ focused, color, size }) => {
+          let iconName: keyof typeof Ionicons.glyphMap = 'home';
+  
+          switch (route.name) {
+            case 'Dashboard':
+              iconName = focused ? 'home' : 'home-outline';
+              break;
+            case 'Tasks':
+              iconName = focused ? 'checkmark-circle' : 'checkmark-circle-outline';
+              break;
+            case 'Health':
+              iconName = focused ? 'fitness' : 'fitness-outline';
+              break;
+            case 'Finance':
+              iconName = focused ? 'wallet' : 'wallet-outline';
+              break;
+            case 'Profile':
+              iconName = focused ? 'person' : 'person-outline';
+              break;
+          }
+  
+          return <Ionicons name={iconName} size={22} color={color} />;
+        },
+        tabBarActiveTintColor: Colors.primary,
+        tabBarInactiveTintColor: Colors.textTertiary,
+        tabBarStyle: {
+          backgroundColor: Colors.surface,
+          borderTopColor: Colors.borderLight,
+          borderTopWidth: 1,
+          paddingBottom: Math.max(insets.bottom, 12),
+          paddingTop: 12,
+          height: 64 + Math.max(insets.bottom, 0),
+          ...Shadows.sm,
+        },
+        tabBarLabelStyle: {
+          fontSize: FontSizes.xs,
+          fontWeight: FontWeights.medium,
+          marginBottom: 4,
+        },
+        tabBarHideOnKeyboard: true,
+      })}
+    >
     <Tab.Screen name="Dashboard" component={DashboardScreen} />
     <Tab.Screen name="Tasks" component={TaskStackNavigator} />
-    <Tab.Screen name="Meetings" component={MeetingStackNavigator} />
+    <Tab.Screen name="Health" component={HealthStack} />
     <Tab.Screen name="Finance" component={FinanceStackNavigator} />
     <Tab.Screen name="Profile" component={ProfileScreen} />
   </Tab.Navigator>
-);
+  );
+};
 
 // Auth Stack
 const AuthStack = () => (
@@ -115,9 +125,9 @@ const AuthStack = () => (
 );
 
 export const AppNavigator = () => {
-  const { isAuthenticated, isLoading } = useAuthStore();
+  const { isAuthenticated, isRestoring } = useAuthStore();
 
-  if (isLoading) {
+  if (isRestoring) {
     return (
       <View style={styles.loading}>
         <ActivityIndicator size="large" color={Colors.primary} />

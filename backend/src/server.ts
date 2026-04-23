@@ -11,6 +11,8 @@ import transactionRoutes from './routes/transactions';
 import accountRoutes from './routes/accounts';
 import notificationRoutes from './routes/notifications';
 
+import healthRoutes from './routes/health/healthRoutes';
+
 dotenv.config();
 
 connectDB();
@@ -27,6 +29,7 @@ app.use('/api/meetings', meetingRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/accounts', accountRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/health', healthRoutes);
 
 app.get('/', (req, res) => {
   res.send('Life Assistant API is running...');

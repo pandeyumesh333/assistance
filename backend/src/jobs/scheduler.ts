@@ -7,8 +7,10 @@ import {
   generateDailyMorningSummary,
   generateDailyEveningSummary,
 } from '../services/summaryService';
+import { initHealthReminders } from './health/reminderJobs';
 
 export const initScheduler = (): void => {
+  initHealthReminders();
   // Check for task and meeting reminders every minute
   cron.schedule('* * * * *', async () => {
     try {

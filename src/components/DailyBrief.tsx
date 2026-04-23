@@ -5,29 +5,46 @@ import { Card } from './Card';
 import { Colors, FontSizes, FontWeights, Spacing } from '../constants/theme';
 import { formatCurrency } from '../utils/helpers';
 
+import { useHealthStore } from '../modules/health/store/healthStore';
+
 interface DailyBriefProps {
   pendingTasks: number;
   meetingsCount: number;
   expensesToday: number;
   userName: string;
+  navigation: any;
 }
 
-export const DailyBrief = ({ pendingTasks, meetingsCount, expensesToday, userName }: DailyBriefProps) => {
+export const DailyBrief = ({ pendingTasks, meetingsCount, expensesToday, userName, navigation }: DailyBriefProps) => {
+  const { dailyStats, targets } = useHealthStore();
+
   const getBriefMessage = () => {
-    if (pendingTasks === 0 && meetingsCount === 0 && expensesToday === 0) {
-      return `It's a quiet day, ${userName}. Time to relax! ☕`;
-    }
-    
     let message = `Good day, ${userName}! `;
+    
     if (meetingsCount > 0) {
-      message += `You have ${meetingsCount} meeting${meetingsCount > 1 ? 's' : ''} to attend. `;
+      message += `You have ${meetingsCount} meeting${meetingsCount > 1 ? 's' : ''} today. `;
     }
     if (pendingTasks > 0) {
-      message += `Don't forget your ${pendingTasks} pending task${pendingTasks > 1 ? 's' : ''}. `;
+      message += `There are ${pendingTasks} tasks on your plate. `;
     }
+    
+    if (dailyStats && targets) {
+      const waterLeft = Math.max(0, targets.hydrationTargetMl - dailyStats.waterConsumed);
+      if (waterLeft > 0) {
+        message += `Drink ${Math.round(waterLeft / 250)} more glasses of water. `;
+      } else {
+        message += `Great job on hydration! `;
+      }
+      
+      if (dailyStats.exerciseMinutes === 0) {
+        message += `Don't forget to squeeze in a workout. `;
+      }
+    }
+
     if (expensesToday > 0) {
-      message += `You've spent ${formatCurrency(expensesToday)} so far today.`;
+      message += `Spending is at ${formatCurrency(expensesToday)}.`;
     }
+    
     return message;
   };
 

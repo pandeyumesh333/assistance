@@ -15,6 +15,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useTaskStore } from '../../stores/taskStore';
 import { useMeetingStore } from '../../stores/meetingStore';
 import { useFinanceStore } from '../../stores/financeStore';
+import { useHealthStore } from '../../modules/health/store/healthStore';
 import { syncRecentSMS } from '../../services/smsListener';
 import { Platform } from 'react-native';
 import { getGreeting, formatCurrency, formatTime } from '../../utils/helpers';
@@ -32,6 +33,7 @@ export const DashboardScreen = ({ navigation }: any) => {
   const { tasks, fetchTasks } = useTaskStore();
   const { meetings, fetchMeetings } = useMeetingStore();
   const { balance, fetchBalance, fetchTransactions, transactions } = useFinanceStore();
+  const { dailyStats, fetchHealthData } = useHealthStore();
   const [refreshing, setRefreshing] = useState(false);
   const fadeAnim = useState(new Animated.Value(0))[0];
 
@@ -65,6 +67,7 @@ export const DashboardScreen = ({ navigation }: any) => {
       fetchMeetings(),
       fetchBalance(),
       fetchTransactions(),
+      fetchHealthData(new Date().toISOString().split('T')[0]),
     ]);
 
     // Auto-sync SMS on Android
@@ -133,6 +136,7 @@ export const DashboardScreen = ({ navigation }: any) => {
             pendingTasks={pendingTasks.length}
             meetingsCount={todayMeetings.length}
             expensesToday={expensesToday}
+            navigation={navigation}
           />
 
 
@@ -235,18 +239,26 @@ export const DashboardScreen = ({ navigation }: any) => {
             </View>
           )}
 
-          {/* Health Placeholder */}
+          {/* Health Summary Card */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Health & Wellness</Text>
-            <Card style={styles.healthCard} variant="outlined">
+            <Card
+              style={styles.healthCard}
+              onPress={() => navigation.navigate('Health')}
+            >
               <View style={styles.healthContent}>
-                <Ionicons name="fitness" size={28} color={Colors.textTertiary} />
+                <View style={[styles.statIcon, { backgroundColor: '#8B5CF620' }]}>
+                  <Ionicons name="fitness" size={24} color="#8B5CF6" />
+                </View>
                 <View style={styles.healthText}>
-                  <Text style={styles.healthTitle}>Coming Soon</Text>
+                  <Text style={styles.healthTitle}>Daily Health Score</Text>
                   <Text style={styles.healthSubtitle}>
-                    HealthKit & Google Fit integration
+                    {dailyStats?.healthScore 
+                      ? `Your score is ${dailyStats.healthScore}% today. Tap to see more.`
+                      : 'Track your fitness, nutrition, and hydration.'}
                   </Text>
                 </View>
+                <Ionicons name="chevron-forward" size={20} color={Colors.textTertiary} />
               </View>
             </Card>
           </View>

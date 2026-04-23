@@ -8,6 +8,7 @@ interface AuthState {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isRestoring: boolean;
   error: string | null;
 
   login: (email: string, password: string) => Promise<void>;
@@ -22,7 +23,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   token: null,
   isAuthenticated: false,
-  isLoading: true,
+  isLoading: false,
+  isRestoring: true,
   error: null,
 
   login: async (email: string, password: string) => {
@@ -76,10 +78,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   restoreSession: async () => {
     try {
-      set({ isLoading: true });
       const token = await SecureStore.getItemAsync('auth_token');
       if (!token) {
-        set({ isLoading: false });
+        set({ isRestoring: false });
         return;
       }
 
@@ -88,7 +89,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         user: data.user,
         token,
         isAuthenticated: true,
-        isLoading: false,
+        isRestoring: false,
       });
     } catch (error) {
       await SecureStore.deleteItemAsync('auth_token');
@@ -96,7 +97,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         user: null,
         token: null,
         isAuthenticated: false,
-        isLoading: false,
+        isRestoring: false,
       });
     }
   },

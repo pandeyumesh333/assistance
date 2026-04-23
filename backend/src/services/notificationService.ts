@@ -5,7 +5,7 @@ export const sendPushNotification = async (
   pushToken: string | undefined,
   title: string,
   body: string,
-  type: 'reminder' | 'summary' | 'alert' = 'alert'
+  type: 'reminder' | 'summary' | 'alert' | 'health' = 'alert'
 ): Promise<void> => {
   try {
     // 1. Save to database
