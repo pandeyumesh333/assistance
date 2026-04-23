@@ -20,7 +20,6 @@ export const requestSMSPermission = async () => {
     );
     return granted === PermissionsAndroid.RESULTS.GRANTED;
   } catch (err) {
-    console.warn(err);
     return false;
   }
 };
@@ -37,7 +36,7 @@ export const syncRecentSMS = async () => {
   SmsAndroid.list(
     JSON.stringify(filter),
     (fail: string) => {
-      console.log('Failed with error: ' + fail);
+      // SMS read failed silently
     },
     async (count: number, smsList: string) => {
       const messages = JSON.parse(smsList);
@@ -60,10 +59,10 @@ export const syncRecentSMS = async () => {
               source: 'sms',
               rawSms: msg.body,
             });
-            console.log('Automatically added transaction from SMS:', parsed.merchant);
           }
         }
       }
     }
   );
 };
+
