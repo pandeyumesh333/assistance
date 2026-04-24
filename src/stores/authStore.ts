@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import { User } from '../types';
 import { authAPI } from '../services/api';
+import { API_URL } from '../constants/theme';
 
 interface AuthState {
   user: User | null;
@@ -78,27 +79,38 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   restoreSession: async () => {
     try {
+      console.log('Restoring session with API_URL:', API_URL);
       const token = await SecureStore.getItemAsync('auth_token');
       if (!token) {
+        console.log('No token found');
         set({ isRestoring: false });
         return;
       }
 
+      console.log('Token found, fetching profile...');
       const { data } = await authAPI.getMe();
+      console.log('Profile fetched successfully');
+      
       set({
         user: data,
         token,
         isAuthenticated: true,
         isRestoring: false,
       });
-    } catch (error) {
-      await SecureStore.deleteItemAsync('auth_token');
+    } catch (error: any) {
+      console.error('Session restoration failed:', error.message);
+      // Even if it fails, we must stop the loading state
       set({
         user: null,
         token: null,
         isAuthenticated: false,
         isRestoring: false,
       });
+    } finally {
+      // Safety net to ensure isRestoring is ALWAYS false
+      if (get().isRestoring) {
+        set({ isRestoring: false });
+      }
     }
   },
 

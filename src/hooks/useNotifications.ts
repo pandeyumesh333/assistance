@@ -1,18 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import * as Notifications from 'expo-notifications';
+import { Audio } from 'expo-av';
 import { Platform } from 'react-native';
 import { authAPI } from '../services/api';
 import { useAuthStore } from '../stores/authStore';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
 
 export const useNotifications = () => {
   const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
@@ -31,8 +23,26 @@ export const useNotifications = () => {
     });
 
     notificationListener.current =
-      Notifications.addNotificationReceivedListener(() => {
-        // Notification received
+      Notifications.addNotificationReceivedListener(async (notification) => {
+        const { data } = notification.request.content;
+        const isAlarm = notification.request.content.title?.includes('ALARM');
+        
+        if (data?.type === 'task' && isAlarm) {
+          try {
+            console.log('Playing Game of Thrones Alarm...');
+            const { sound } = await Audio.Sound.createAsync(
+              require('../../assets/sounds/alarm.mp3'),
+              { shouldPlay: true, volume: 1.0, isLooping: true }
+            );
+            // Ring for 30 seconds
+            setTimeout(async () => {
+              await sound.stopAsync();
+              await sound.unloadAsync();
+            }, 30000);
+          } catch (e) {
+            console.error('Failed to play alarm sound', e);
+          }
+        }
       });
 
     responseListener.current =

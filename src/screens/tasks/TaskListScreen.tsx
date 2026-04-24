@@ -10,9 +10,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { Audio } from 'expo-av';
+import { useFocusEffect } from '@react-navigation/native';
 import { Card } from '../../components/Card';
 import { EmptyState } from '../../components/EmptyState';
 import { useTaskStore } from '../../stores/taskStore';
+import { useAuthStore } from '../../stores/authStore';
 import { Task } from '../../types';
 import { formatDate, getPriorityColor } from '../../utils/helpers';
 import { useTheme } from '../../hooks/useTheme';
@@ -25,16 +28,39 @@ import {
 
 export const TaskListScreen = ({ navigation }: any) => {
   const { tasks, fetchTasks, toggleComplete, deleteTask, isLoading } = useTaskStore();
-  const { colors, isDark } = useTheme();
+  const { user, restoreSession } = useAuthStore();
+  const { colors } = useTheme();
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
   const [refreshing, setRefreshing] = useState(false);
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
 
-  const { useFocusEffect } = require('@react-navigation/native');
   useFocusEffect(
     useCallback(() => {
       fetchTasks();
-    }, [fetchTasks])
+      restoreSession(); // Refresh user stats
+    }, [fetchTasks, restoreSession])
   );
+
+  useEffect(() => {
+    return sound
+      ? () => {
+          sound.unloadAsync();
+        }
+      : undefined;
+  }, [sound]);
+
+  const playSuccessSound = async () => {
+    try {
+      // Note: Make sure the file exists or handle error
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: 'https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3' } // Placeholder remote sound
+      );
+      setSound(sound);
+      await sound.playAsync();
+    } catch (e) {
+      // Ignore if sound fails to load
+    }
+  };
 
   const filteredTasks = tasks.filter((t) => {
     if (filter === 'pending') return !t.completed;
@@ -44,8 +70,17 @@ export const TaskListScreen = ({ navigation }: any) => {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchTasks();
+    await Promise.all([fetchTasks(), restoreSession()]);
     setRefreshing(false);
+  };
+
+  const handleToggleComplete = async (id: string, completed: boolean) => {
+    await toggleComplete(id, completed);
+    if (completed) {
+      await playSuccessSound();
+      // Refresh user stats to show XP/Level update
+      await restoreSession();
+    }
   };
 
   const handleDelete = (id: string, title: string) => {
@@ -59,6 +94,9 @@ export const TaskListScreen = ({ navigation }: any) => {
     ]);
   };
 
+  const xpProgress = user ? (user.xp % 100) / 100 : 0;
+  const streak = user?.streak || 0;
+
   const dynamicStyles = StyleSheet.create({
     safe: {
       flex: 1,
@@ -68,6 +106,44 @@ export const TaskListScreen = ({ navigation }: any) => {
       fontSize: FontSizes.xxl,
       fontWeight: FontWeights.bold,
       color: colors.textPrimary,
+    },
+    statsRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+      marginTop: Spacing.xs,
+    },
+    streakBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#FEF3C7',
+      paddingHorizontal: Spacing.xs,
+      paddingVertical: 2,
+      borderRadius: BorderRadius.sm,
+      gap: 2,
+    },
+    streakText: {
+      color: '#D97706',
+      fontSize: FontSizes.xs,
+      fontWeight: FontWeights.bold,
+    },
+    levelProgress: {
+      height: 6,
+      backgroundColor: colors.border,
+      borderRadius: 3,
+      marginTop: Spacing.xs,
+      overflow: 'hidden',
+      flex: 1,
+    },
+    levelBar: {
+      height: '100%',
+      backgroundColor: colors.primary,
+      width: `${xpProgress * 100}%`,
+    },
+    levelText: {
+      fontSize: FontSizes.xs,
+      fontWeight: FontWeights.bold,
+      color: colors.primary,
     },
     taskTitle: {
       fontSize: FontSizes.md,
@@ -111,7 +187,7 @@ export const TaskListScreen = ({ navigation }: any) => {
             { borderColor: colors.border },
             item.completed && { backgroundColor: colors.secondary, borderColor: colors.secondary },
           ]}
-          onPress={() => toggleComplete(item._id, !item.completed)}
+          onPress={() => handleToggleComplete(item._id, !item.completed)}
         >
           {item.completed && (
             <Ionicons name="checkmark" size={14} color="#FFFFFF" />
@@ -141,14 +217,14 @@ export const TaskListScreen = ({ navigation }: any) => {
                   { color: getPriorityColor(item.priority) },
                 ]}
               >
-                {item.priority}
+                +{item.xpReward || 10} XP
               </Text>
             </View>
             {item.dueDate && (
               <Text style={dynamicStyles.dueDate}>{formatDate(item.dueDate)}</Text>
             )}
-            {item.recurring !== 'none' && (
-              <Ionicons name="repeat" size={14} color={colors.textTertiary} />
+            {item.audioNoteUrl && (
+              <Ionicons name="mic" size={14} color={colors.primary} />
             )}
           </View>
         </View>
@@ -166,7 +242,23 @@ export const TaskListScreen = ({ navigation }: any) => {
   return (
     <SafeAreaView style={dynamicStyles.safe} edges={['top']}>
       <View style={styles.header}>
-        <Text style={dynamicStyles.headerTitle}>Tasks</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={dynamicStyles.headerTitle}>Tasks</Text>
+          {user && (
+            <View style={dynamicStyles.statsRow}>
+              <Text style={dynamicStyles.levelText}>Lvl {user.level}</Text>
+              <View style={dynamicStyles.levelProgress}>
+                <View style={dynamicStyles.levelBar} />
+              </View>
+              {streak > 0 && (
+                <View style={dynamicStyles.streakBadge}>
+                  <Ionicons name="flame" size={12} color="#D97706" />
+                  <Text style={dynamicStyles.streakText}>{streak}</Text>
+                </View>
+              )}
+            </View>
+          )}
+        </View>
         <TouchableOpacity
           style={[styles.addButton, { backgroundColor: colors.primary }]}
           onPress={() => navigation.navigate('TaskForm')}
@@ -230,11 +322,12 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
   },
   addButton: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: BorderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
+    marginLeft: Spacing.md,
   },
   filterRow: {
     flexDirection: 'row',
@@ -277,8 +370,8 @@ const styles = StyleSheet.create({
   },
   priorityText: {
     fontSize: FontSizes.xs,
-    fontWeight: FontWeights.medium,
-    textTransform: 'capitalize',
+    fontWeight: FontWeights.bold,
+    textTransform: 'uppercase',
   },
   deleteBtn: {
     padding: Spacing.xs,

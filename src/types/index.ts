@@ -4,6 +4,11 @@ export interface User {
   name: string;
   pushToken: string | null;
   notificationsEnabled: boolean;
+  xp: number;
+  level: number;
+  streak: number;
+  totalTasksCompleted: number;
+  lastTaskCompletedDate?: string;
   createdAt: string;
 }
 
@@ -16,6 +21,10 @@ export interface Task {
   dueDate: string | null;
   recurring: 'none' | 'daily' | 'weekly' | 'monthly';
   completed: boolean;
+  audioNoteUrl?: string;
+  reminderOffset?: number;
+  reminderType?: 'notification' | 'alarm' | 'both';
+  xpReward: number;
   createdAt: string;
 }
 
@@ -82,6 +91,9 @@ export interface CreateTaskInput {
   priority?: 'low' | 'medium' | 'high';
   dueDate?: string;
   recurring?: 'none' | 'daily' | 'weekly' | 'monthly';
+  audioNoteUrl?: string;
+  reminderOffset?: number;
+  reminderType?: 'notification' | 'alarm' | 'both';
 }
 
 export interface CreateMeetingInput {

@@ -184,6 +184,27 @@ export const ProfileScreen = () => {
               <Text style={dynamicStyles.userEmail}>{user?.email}</Text>
             </View>
           </View>
+          
+          {/* Gamification Stats */}
+          <View style={styles.statsRow}>
+            <View style={styles.statBox}>
+              <Text style={styles.statLabel}>Level</Text>
+              <Text style={[styles.statValue, { color: colors.primary }]}>{user?.level || 1}</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statBox}>
+              <Text style={styles.statLabel}>XP</Text>
+              <Text style={[styles.statValue, { color: colors.secondary }]}>{user?.xp || 0}</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statBox}>
+              <Text style={styles.statLabel}>Streak</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                <Ionicons name="flame" size={16} color="#D97706" />
+                <Text style={[styles.statValue, { color: '#D97706' }]}>{user?.streak || 0}</Text>
+              </View>
+            </View>
+          </View>
         </Card>
 
         {/* Settings */}
@@ -326,9 +347,38 @@ const styles = StyleSheet.create({
   avatarContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: Spacing.md,
   },
   userInfo: {
     flex: 1,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    paddingTop: Spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.05)',
+  },
+  statBox: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statLabel: {
+    fontSize: FontSizes.xs,
+    color: '#94A3B8',
+    fontWeight: FontWeights.medium,
+    marginBottom: 2,
+    textTransform: 'uppercase',
+  },
+  statValue: {
+    fontSize: FontSizes.lg,
+    fontWeight: FontWeights.bold,
+  },
+  statDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: 'rgba(0,0,0,0.05)',
   },
   settingCard: {
     marginBottom: Spacing.xs,

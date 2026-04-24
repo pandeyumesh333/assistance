@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,11 +11,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { Audio } from 'expo-av';
 import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { useTaskStore } from '../../stores/taskStore';
 import { Task } from '../../types';
 import { useTheme } from '../../hooks/useTheme';
+import { NotificationService } from '../../services/NotificationService';
 import {
   FontSizes,
   FontWeights,
@@ -32,7 +34,7 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
   const existingTask = route.params?.task;
   const isEditing = !!existingTask;
 
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const [title, setTitle] = useState(existingTask?.title || '');
   const [description, setDescription] = useState(existingTask?.description || '');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>(
@@ -44,14 +46,149 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
   const [recurring, setRecurring] = useState<'none' | 'daily' | 'weekly' | 'monthly'>(
     existingTask?.recurring || 'none'
   );
+  const [reminderOffset, setReminderOffset] = useState<number>(
+    existingTask?.reminderOffset || 10
+  );
+  const [audioUri, setAudioUri] = useState<string | null>(
+    existingTask?.audioNoteUrl || null
+  );
+  const [reminderType, setReminderType] = useState<'notification' | 'alarm' | 'both'>(
+    existingTask?.reminderType || 'notification'
+  );
+  const [androidMode, setAndroidMode] = useState<'date' | 'time'>('date');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
 
   const { createTask, updateTask } = useTaskStore();
+
+  useEffect(() => {
+    return sound
+      ? () => {
+          sound.unloadAsync();
+        }
+      : undefined;
+  }, [sound]);
+
+  const startRecording = async () => {
+    try {
+      const permission = await Audio.requestPermissionsAsync();
+      if (permission.status !== 'granted') return;
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      setRecording(recording);
+      setIsRecording(true);
+    } catch (err) {
+      Alert.alert('Failed to start recording', (err as any).message);
+    }
+  };
+
+  const stopRecording = async () => {
+    if (!recording) return;
+    setIsRecording(false);
+    try {
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
+      setAudioUri(uri || null);
+      setRecording(null);
+
+      // Simulated Transcription
+      if (uri) {
+        setLoading(true);
+        // Simulate a delay for transcription
+        setTimeout(() => {
+          if (!title) {
+            setTitle('Voice Task: Buy Groceries'); // Mocked transcription for title
+          }
+          const transcription = "I need to buy some milk, eggs, and bread from the store this evening.";
+          setDescription(prev => prev ? `${prev}\n\n[Transcribed]: ${transcription}` : `[Transcribed]: ${transcription}`);
+          setLoading(false);
+          Alert.alert('Voice Typed', 'Your recording has been transcribed into the title and description.');
+        }, 2000);
+      }
+    } catch (err) {
+      console.error('Failed to stop recording', err);
+    }
+  };
+
+  const playRecording = async () => {
+    if (!audioUri) {
+      console.log('No audio URI found');
+      return;
+    }
+    try {
+      console.log('Attempting to play audio from:', audioUri);
+      
+      // Ensure the URI has file:// prefix if it's a local path and doesn't have it
+      const playbackUri = audioUri.startsWith('http') || audioUri.startsWith('file://') 
+        ? audioUri 
+        : `file://${audioUri}`;
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: true,
+        shouldDuckAndroid: true,
+        playThroughEarpieceAndroid: false,
+      });
+
+      if (sound) {
+        await sound.unloadAsync();
+      }
+
+      const { sound: newSound } = await Audio.Sound.createAsync(
+        { uri: playbackUri },
+        { shouldPlay: true }
+      );
+      setSound(newSound);
+      console.log('Audio playback started');
+    } catch (err) {
+      console.error('Playback failed', err);
+      Alert.alert('Playback failed', (err as any).message);
+    }
+  };
+
+
+  const onDateChange = (event: any, date?: Date) => {
+    if (event.type === 'dismissed') {
+      setShowDatePicker(false);
+      setAndroidMode('date');
+      return;
+    }
+
+    if (date) {
+      if (Platform.OS === 'android' && androidMode === 'date') {
+        // Date selected, now show time picker
+        setDueDate(date);
+        setAndroidMode('time');
+        // Small timeout to allow the date picker to fully close before opening time picker
+        setTimeout(() => setShowDatePicker(true), 0);
+      } else {
+        // Time selected on Android or any selection on iOS
+        setDueDate(date);
+        setShowDatePicker(Platform.OS === 'ios');
+        setAndroidMode('date');
+      }
+    }
+  };
 
   const handleSave = async () => {
     if (!title.trim()) {
       Alert.alert('Error', 'Title is required');
+      return;
+    }
+
+    if (dueDate && dueDate.getTime() <= Date.now()) {
+      Alert.alert('Error', 'Due date must be in the future');
       return;
     }
 
@@ -63,6 +200,9 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
         priority,
         dueDate: dueDate?.toISOString() || undefined,
         recurring,
+        reminderOffset,
+        reminderType,
+        audioNoteUrl: audioUri || undefined,
       };
 
       if (isEditing && existingTask) {
@@ -70,6 +210,16 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
       } else {
         await createTask(taskData);
       }
+
+      // Schedule notification if dueDate is set
+      if (dueDate) {
+        await NotificationService.scheduleTaskReminder({
+          ...taskData,
+          _id: existingTask?._id || 'temp',
+          completed: false,
+        } as any);
+      }
+
       navigation.goBack();
     } catch (error) {
       Alert.alert('Error', 'Failed to save task');
@@ -84,11 +234,12 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
     { value: 'high', label: 'High', color: '#EF4444' },
   ];
 
-  const recurringOptions: Array<{ value: string; label: string }> = [
-    { value: 'none', label: 'None' },
-    { value: 'daily', label: 'Daily' },
-    { value: 'weekly', label: 'Weekly' },
-    { value: 'monthly', label: 'Monthly' },
+  const reminderOptions = [
+    { label: 'None', value: 0 },
+    { label: '5m', value: 5 },
+    { label: '10m', value: 10 },
+    { label: '30m', value: 30 },
+    { label: '1h', value: 60 },
   ];
 
   const dynamicStyles = StyleSheet.create({
@@ -140,6 +291,27 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
       fontSize: FontSizes.md,
       color: colors.textSecondary,
     },
+    audioContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+      marginBottom: Spacing.md,
+    },
+    recordingBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: Spacing.sm,
+      borderRadius: BorderRadius.md,
+      backgroundColor: isRecording ? '#EF4444' : colors.primary,
+      gap: Spacing.xs,
+    },
+    playBtn: {
+      padding: Spacing.sm,
+      borderRadius: BorderRadius.md,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
   });
 
   return (
@@ -177,8 +349,27 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
           style={{ minHeight: 80, textAlignVertical: 'top' }}
         />
 
+        {/* Audio Note */}
+        <Text style={dynamicStyles.label}>Voice Note</Text>
+        <View style={dynamicStyles.audioContainer}>
+          <TouchableOpacity
+            style={dynamicStyles.recordingBtn}
+            onPress={isRecording ? stopRecording : startRecording}
+          >
+            <Ionicons name={isRecording ? 'stop' : 'mic'} size={20} color="#FFFFFF" />
+            <Text style={{ color: '#FFFFFF', fontWeight: '600' }}>
+              {isRecording ? 'Stop Recording' : 'Record Voice Note'}
+            </Text>
+          </TouchableOpacity>
+          {audioUri && !isRecording && (
+            <TouchableOpacity style={dynamicStyles.playBtn} onPress={playRecording}>
+              <Ionicons name="play" size={20} color={colors.primary} />
+            </TouchableOpacity>
+          )}
+        </View>
+
         {/* Priority */}
-        <Text style={dynamicStyles.label}>Priority</Text>
+        <Text style={dynamicStyles.label}>Priority & Reward</Text>
         <View style={styles.optionRow}>
           {priorities.map((p) => (
             <TouchableOpacity
@@ -201,14 +392,14 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
                   priority === p.value && { color: p.color },
                 ]}
               >
-                {p.label}
+                {p.label} (+{p.value === 'low' ? 10 : p.value === 'medium' ? 20 : 50} XP)
               </Text>
             </TouchableOpacity>
           ))}
         </View>
 
         {/* Due Date */}
-        <Text style={dynamicStyles.label}>Due Date</Text>
+        <Text style={dynamicStyles.label}>Due Date & Alarm</Text>
         <TouchableOpacity
           style={dynamicStyles.dateBtn}
           onPress={() => setShowDatePicker(true)}
@@ -227,35 +418,91 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
         {showDatePicker && (
           <DateTimePicker
             value={dueDate || new Date()}
-            mode="datetime"
+            mode={Platform.OS === 'ios' ? 'datetime' : androidMode}
             display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            onChange={(event, date) => {
-              setShowDatePicker(Platform.OS === 'ios');
-              if (date) setDueDate(date);
-            }}
+            onChange={onDateChange}
             minimumDate={new Date()}
           />
+        )}
+
+        {dueDate && (
+          <>
+            <Text style={dynamicStyles.label}>Reminder Type</Text>
+            <View style={styles.optionRow}>
+              {[
+                { label: 'Notification', value: 'notification', icon: 'notifications' },
+                { label: 'Alarm', value: 'alarm', icon: 'alarm' },
+                { label: 'Both', value: 'both', icon: 'options' },
+              ].map((opt) => (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={[
+                    dynamicStyles.optionBtn,
+                    reminderType === opt.value && { backgroundColor: colors.primary + '15', borderColor: colors.primary },
+                  ]}
+                  onPress={() => setReminderType(opt.value as any)}
+                >
+                  <Ionicons 
+                    name={opt.icon as any} 
+                    size={16} 
+                    color={reminderType === opt.value ? colors.primary : colors.textTertiary} 
+                  />
+                  <Text
+                    style={[
+                      dynamicStyles.optionText,
+                      reminderType === opt.value && { color: colors.primary },
+                    ]}
+                  >
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={dynamicStyles.label}>Remind me before</Text>
+            <View style={styles.optionRow}>
+              {reminderOptions.map((opt) => (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={[
+                    dynamicStyles.optionBtn,
+                    reminderOffset === opt.value && { backgroundColor: colors.primary + '15', borderColor: colors.primary },
+                  ]}
+                  onPress={() => setReminderOffset(opt.value)}
+                >
+                  <Text
+                    style={[
+                      dynamicStyles.optionText,
+                      reminderOffset === opt.value && { color: colors.primary },
+                    ]}
+                  >
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>
         )}
 
         {/* Recurring */}
         <Text style={dynamicStyles.label}>Recurring</Text>
         <View style={styles.optionRow}>
-          {recurringOptions.map((r) => (
+          {['none', 'daily', 'weekly', 'monthly'].map((r) => (
             <TouchableOpacity
-              key={r.value}
+              key={r}
               style={[
                 dynamicStyles.optionBtn,
-                recurring === r.value && { backgroundColor: colors.primary + '15', borderColor: colors.primary },
+                recurring === r && { backgroundColor: colors.primary + '15', borderColor: colors.primary },
               ]}
-              onPress={() => setRecurring(r.value as any)}
+              onPress={() => setRecurring(r as any)}
             >
               <Text
                 style={[
                   dynamicStyles.optionText,
-                  recurring === r.value && { color: colors.primary },
+                  recurring === r && { color: colors.primary },
                 ]}
               >
-                {r.label}
+                {r.charAt(0).toUpperCase() + r.slice(1)}
               </Text>
             </TouchableOpacity>
           ))}

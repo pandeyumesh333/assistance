@@ -8,6 +8,10 @@ export interface ITask extends Document {
   priority: 'low' | 'medium' | 'high';
   dueDate?: Date;
   recurring: 'none' | 'daily' | 'weekly' | 'monthly';
+  audioNoteUrl?: string;
+  reminderOffset?: number; // minutes before
+  reminderType?: 'notification' | 'alarm' | 'both';
+  xpReward: number;
   createdAt: Date;
 }
 
@@ -28,6 +32,14 @@ const taskSchema = new Schema<ITask>(
       enum: ['none', 'daily', 'weekly', 'monthly'],
       default: 'none',
     },
+    audioNoteUrl: { type: String },
+    reminderOffset: { type: Number, default: 0 },
+    reminderType: {
+      type: String,
+      enum: ['notification', 'alarm', 'both'],
+      default: 'notification',
+    },
+    xpReward: { type: Number, default: 10 },
   },
   { timestamps: true }
 );

@@ -25,9 +25,11 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     try {
       set({ isLoading: true, error: null });
       const { data } = await taskAPI.getAll();
-      set({ tasks: data.tasks || [], isLoading: false });
+      // Backend returns tasks array directly
+      const tasks = Array.isArray(data) ? data : (data.tasks || []);
+      set({ tasks, isLoading: false });
       // Cache for offline
-      await AsyncStorage.setItem('cached_tasks', JSON.stringify(data.tasks));
+      await AsyncStorage.setItem('cached_tasks', JSON.stringify(tasks));
     } catch (error: any) {
       set({ error: 'Failed to fetch tasks', isLoading: false });
       // Load cached data on failure
@@ -39,7 +41,9 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     try {
       set({ error: null });
       const { data } = await taskAPI.create(input);
-      set({ tasks: [data.task, ...get().tasks] });
+      // Backend returns the created task directly
+      const newTask = data.task || data;
+      set({ tasks: [newTask, ...get().tasks] });
     } catch (error: any) {
       set({ error: 'Failed to create task' });
       throw error;
@@ -50,8 +54,10 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     try {
       set({ error: null });
       const { data } = await taskAPI.update(id, updates);
+      // Backend returns the updated task directly
+      const updatedTask = data.task || data;
       set({
-        tasks: get().tasks.map((t) => (t._id === id ? data.task : t)),
+        tasks: get().tasks.map((t) => (t._id === id ? updatedTask : t)),
       });
     } catch (error: any) {
       set({ error: 'Failed to update task' });
@@ -73,8 +79,9 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   toggleComplete: async (id: string, completed: boolean) => {
     try {
       const { data } = await taskAPI.update(id, { completed });
+      const updatedTask = data.task || data;
       set({
-        tasks: get().tasks.map((t) => (t._id === id ? data.task : t)),
+        tasks: get().tasks.map((t) => (t._id === id ? updatedTask : t)),
       });
     } catch (error: any) {
       set({ error: 'Failed to update task' });

@@ -3,7 +3,7 @@ import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
 
 import { useAuthStore } from '../stores/authStore';
 import { useTheme } from '../hooks/useTheme';
@@ -130,13 +130,16 @@ const AuthStack = () => (
 );
 
 export const AppNavigator = () => {
-  const { isAuthenticated, isRestoring } = useAuthStore();
+  const { isAuthenticated, isRestoring, error } = useAuthStore();
   const { colors, mode } = useTheme();
 
   if (isRestoring) {
     return (
       <View style={[styles.loading, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={{ marginTop: 20, color: colors.textSecondary }}>
+          Connecting to Assistant...
+        </Text>
       </View>
     );
   }

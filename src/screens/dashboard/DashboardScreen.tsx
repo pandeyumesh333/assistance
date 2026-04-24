@@ -6,9 +6,13 @@ import {
   ScrollView,
   RefreshControl,
   Animated,
+  Platform,
+  Alert,
+  TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { Card } from '../../components/Card';
 import { DailyBrief } from '../../components/DailyBrief';
 import { useAuthStore } from '../../stores/authStore';
@@ -18,8 +22,8 @@ import { useFinanceStore } from '../../stores/financeStore';
 import { useHealthStore } from '../../modules/health/store/healthStore';
 import { useTheme } from '../../hooks/useTheme';
 import { syncRecentSMS } from '../../services/smsListener';
-import { Platform } from 'react-native';
 import { getGreeting, formatCurrency, formatTime } from '../../utils/helpers';
+import { NotificationService } from '../../services/NotificationService';
 import {
   FontSizes,
   FontWeights,
@@ -36,7 +40,7 @@ export const DashboardScreen = ({ navigation }: any) => {
   const { colors, isDark } = useTheme();
   
   const [refreshing, setRefreshing] = useState(false);
-  const fadeAnim = useState(new Animated.Value(0))[0];
+  const [fadeAnim] = useState(new Animated.Value(0));
 
   const pendingTasks = (tasks || []).filter((t) => !t.completed);
   const today = new Date();
@@ -49,35 +53,35 @@ export const DashboardScreen = ({ navigation }: any) => {
     return mt >= today && mt < tomorrow;
   });
 
-  const yesterdayStart = new Date(today);
-  yesterdayStart.setDate(yesterdayStart.getDate() - 1);
-  const yesterdayExpenses = (transactions || [])
-    .filter((t) => {
-      const ts = new Date(t.timestamp);
-      return t.type === 'debit' && ts >= yesterdayStart && ts < today;
-    })
-    .reduce((sum, t) => sum + t.amount, 0);
-
   const latestExpense = (transactions || [])
     .filter((t) => t.type === 'debit')
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
 
-  const loadData = useCallback(async () => {
-    await Promise.all([
-      fetchTasks(),
-      fetchMeetings(),
-      fetchBalance(),
-      fetchTransactions(),
-      fetchHealthData(new Date().toISOString().split('T')[0]),
-    ]);
+  const expensesToday = (transactions || [])
+    .filter((t) => {
+      const ts = new Date(t.timestamp);
+      return t.type === 'debit' && ts >= today && ts < tomorrow;
+    })
+    .reduce((sum, t) => sum + t.amount, 0);
 
-    if (Platform.OS === 'android') {
-      syncRecentSMS();
+  const loadData = useCallback(async () => {
+    try {
+      await Promise.all([
+        fetchTasks(),
+        fetchMeetings(),
+        fetchBalance(),
+        fetchTransactions(),
+        fetchHealthData(new Date().toISOString().split('T')[0]),
+      ]);
+
+      if (Platform.OS === 'android') {
+        syncRecentSMS();
+      }
+    } catch (err) {
+      console.error('Failed to load dashboard data:', err);
     }
   }, [fetchTasks, fetchMeetings, fetchBalance, fetchTransactions, fetchHealthData]);
 
-  // Use useFocusEffect to refresh data when screen comes into focus
-  const { useFocusEffect } = require('@react-navigation/native');
   useFocusEffect(
     useCallback(() => {
       loadData();
@@ -100,13 +104,6 @@ export const DashboardScreen = ({ navigation }: any) => {
 
   const greeting = getGreeting();
   const userName = user?.name || user?.email?.split('@')[0] || 'there';
-
-  const expensesToday = (transactions || [])
-    .filter((t) => {
-      const ts = new Date(t.timestamp);
-      return t.type === 'debit' && ts >= today && ts < tomorrow;
-    })
-    .reduce((sum, t) => sum + t.amount, 0);
 
   const dynamicStyles = StyleSheet.create({
     safe: {
@@ -195,13 +192,18 @@ export const DashboardScreen = ({ navigation }: any) => {
         }
       >
         <Animated.View style={{ opacity: fadeAnim }}>
-          {/* Greeting */}
           <View style={styles.greetingSection}>
-            <Text style={dynamicStyles.greeting}>{greeting},</Text>
-            <Text style={dynamicStyles.userName}>{userName} ✨</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={dynamicStyles.greeting}>{greeting},</Text>
+              <Text style={dynamicStyles.userName}>{userName} ✨</Text>
+            </View>
+            <View 
+              style={[styles.testBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            >
+              <Ionicons name="notifications-outline" size={24} color={colors.textTertiary} />
+            </View>
           </View>
 
-          {/* AI Daily Brief */}
           <DailyBrief 
             userName={userName}
             pendingTasks={pendingTasks.length}
@@ -210,12 +212,8 @@ export const DashboardScreen = ({ navigation }: any) => {
             navigation={navigation}
           />
 
-          {/* Quick Stats Row */}
           <View style={styles.statsRow}>
-            <Card
-              style={styles.statCard}
-              onPress={() => navigation.navigate('Tasks')}
-            >
+            <Card style={styles.statCard} onPress={() => navigation.navigate('Tasks')}>
               <View style={[styles.statIcon, { backgroundColor: colors.primary + '20' }]}>
                 <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
               </View>
@@ -223,10 +221,7 @@ export const DashboardScreen = ({ navigation }: any) => {
               <Text style={dynamicStyles.statLabel}>Pending Tasks</Text>
             </Card>
 
-            <Card
-              style={styles.statCard}
-              onPress={() => navigation.navigate('Meetings')}
-            >
+            <Card style={styles.statCard} onPress={() => navigation.navigate('Meetings')}>
               <View style={[styles.statIcon, { backgroundColor: colors.secondary + '20' }]}>
                 <Ionicons name="calendar" size={22} color={colors.secondary} />
               </View>
@@ -235,12 +230,7 @@ export const DashboardScreen = ({ navigation }: any) => {
             </Card>
           </View>
 
-          {/* Balance Card */}
-          <Card
-            style={[styles.balanceCard, { backgroundColor: colors.primary }]}
-            variant="elevated"
-            onPress={() => navigation.navigate('Finance')}
-          >
+          <Card style={[styles.balanceCard, { backgroundColor: colors.primary }]} variant="elevated" onPress={() => navigation.navigate('Finance')}>
             <View style={styles.balanceHeader}>
               <Text style={dynamicStyles.balanceLabel}>Current Balance</Text>
               <Ionicons name="wallet" size={22} color={colors.textInverse} />
@@ -264,7 +254,6 @@ export const DashboardScreen = ({ navigation }: any) => {
             </View>
           </Card>
 
-          {/* Today's Meetings */}
           {todayMeetings.length > 0 && (
             <View style={styles.section}>
               <Text style={dynamicStyles.sectionTitle}>Today's Meetings</Text>
@@ -285,7 +274,6 @@ export const DashboardScreen = ({ navigation }: any) => {
             </View>
           )}
 
-          {/* Latest Expense */}
           {latestExpense && (
             <View style={styles.section}>
               <Text style={dynamicStyles.sectionTitle}>Latest Expense</Text>
@@ -308,13 +296,9 @@ export const DashboardScreen = ({ navigation }: any) => {
             </View>
           )}
 
-          {/* Health Summary Card */}
           <View style={styles.section}>
             <Text style={dynamicStyles.sectionTitle}>Health & Wellness</Text>
-            <Card
-              style={styles.healthCard}
-              onPress={() => navigation.navigate('Health')}
-            >
+            <Card style={styles.healthCard} onPress={() => navigation.navigate('Health')}>
               <View style={styles.healthContent}>
                 <View style={[styles.statIcon, { backgroundColor: '#8B5CF620' }]}>
                   <Ionicons name="fitness" size={24} color="#8B5CF6" />
@@ -346,8 +330,18 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.xxxl,
   },
   greetingSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginTop: Spacing.md,
     marginBottom: Spacing.lg,
+  },
+  testBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
   },
   statsRow: {
     flexDirection: 'row',
