@@ -6,7 +6,6 @@ import {
   FlatList,
   TouchableOpacity,
   RefreshControl,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,6 +13,7 @@ import { Audio } from 'expo-av';
 import { useFocusEffect } from '@react-navigation/native';
 import { Card } from '../../components/Card';
 import { EmptyState } from '../../components/EmptyState';
+import { ThemeModal } from '../../components/ThemeModal';
 import { useTaskStore } from '../../stores/taskStore';
 import { useAuthStore } from '../../stores/authStore';
 import { Task } from '../../types';
@@ -33,6 +33,8 @@ export const TaskListScreen = ({ navigation }: any) => {
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
   const [refreshing, setRefreshing] = useState(false);
   const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState<{ id: string; title: string } | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -84,14 +86,16 @@ export const TaskListScreen = ({ navigation }: any) => {
   };
 
   const handleDelete = (id: string, title: string) => {
-    Alert.alert('Delete Task', `Delete "${title}"?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () => deleteTask(id),
-      },
-    ]);
+    setTaskToDelete({ id, title });
+    setDeleteModalVisible(true);
+  };
+
+  const confirmDelete = async () => {
+    if (taskToDelete) {
+      await deleteTask(taskToDelete.id);
+      setDeleteModalVisible(false);
+      setTaskToDelete(null);
+    }
   };
 
   const xpProgress = user ? (user.xp % 100) / 100 : 0;
@@ -308,6 +312,16 @@ export const TaskListScreen = ({ navigation }: any) => {
             onAction={() => navigation.navigate('TaskForm')}
           />
         }
+      />
+
+      <ThemeModal
+        visible={deleteModalVisible}
+        title="Delete Task"
+        message={`Are you sure you want to delete "${taskToDelete?.title}"? This action cannot be undone.`}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteModalVisible(false)}
+        confirmText="Delete"
+        type="danger"
       />
     </SafeAreaView>
   );

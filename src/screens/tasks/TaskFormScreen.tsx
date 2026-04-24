@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,6 +17,8 @@ import { useTaskStore } from '../../stores/taskStore';
 import { Task } from '../../types';
 import { useTheme } from '../../hooks/useTheme';
 import { NotificationService } from '../../services/NotificationService';
+import { ThemeModal } from '../../components/ThemeModal';
+import Voice from '@react-native-voice/voice';
 import {
   FontSizes,
   FontWeights,
@@ -63,13 +64,42 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
   const [sound, setSound] = useState<Audio.Sound | null>(null);
 
   const { createTask, updateTask } = useTaskStore();
+  const [transcription, setTranscription] = useState('');
+
+  // Themed Alert State
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalTitle, setModalTitle] = useState('');
+  const [modalMessage, setModalMessage] = useState('');
+  const [modalShowCancel, setModalShowCancel] = useState(false);
+
+  const showThemeAlert = (title: string, message: string, showCancel: boolean = false) => {
+    setModalTitle(title);
+    setModalMessage(message);
+    setModalShowCancel(showCancel);
+    setModalVisible(true);
+  };
 
   useEffect(() => {
-    return sound
-      ? () => {
-          sound.unloadAsync();
-        }
-      : undefined;
+    Voice.onSpeechResults = (e: any) => {
+      if (e.value && e.value.length > 0) {
+        const text = e.value[0];
+        setTranscription(text);
+        setTitle(`Voice Task: ${text.slice(0, 30)}${text.length > 30 ? '...' : ''}`);
+        setDescription(prev => prev ? `${prev}\n\n[Transcribed]: ${text}` : `[Transcribed]: ${text}`);
+      }
+    };
+
+    Voice.onSpeechError = (e: any) => {
+      // In Expo Go, this will trigger as not supported
+      console.log('Speech recognition status:', e.error);
+    };
+
+    return () => {
+      if (sound) {
+        sound.unloadAsync();
+      }
+      Voice.destroy().then(Voice.removeAllListeners);
+    };
   }, [sound]);
 
   const startRecording = async () => {
@@ -87,8 +117,15 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
       );
       setRecording(recording);
       setIsRecording(true);
+
+      // Start native voice recognition
+      try {
+        await Voice.start('en-US');
+      } catch (e) {
+        console.log('Native voice not available in Expo Go');
+      }
     } catch (err) {
-      Alert.alert('Failed to start recording', (err as any).message);
+      showThemeAlert('Failed to start recording', (err as any).message);
     }
   };
 
@@ -101,19 +138,19 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
       setAudioUri(uri || null);
       setRecording(null);
 
-      // Simulated Transcription
-      if (uri) {
+      // Stop native voice recognition
+      try {
+        await Voice.stop();
+      } catch (e) {
+        // Fallback for Expo Go (placeholder)
         setLoading(true);
-        // Simulate a delay for transcription
         setTimeout(() => {
-          if (!title) {
-            setTitle('Voice Task: Buy Groceries'); // Mocked transcription for title
+          if (!transcription) {
+            setTitle('Voice Task: Built Application');
+            setDescription(prev => prev ? `${prev}\n\n[Transcribed]: Note: Live native transcription will work on the final build.` : `[Transcribed]: Note: Live native transcription will work on the final build.`);
           }
-          const transcription = "I need to buy some milk, eggs, and bread from the store this evening.";
-          setDescription(prev => prev ? `${prev}\n\n[Transcribed]: ${transcription}` : `[Transcribed]: ${transcription}`);
           setLoading(false);
-          Alert.alert('Voice Typed', 'Your recording has been transcribed into the title and description.');
-        }, 2000);
+        }, 1500);
       }
     } catch (err) {
       console.error('Failed to stop recording', err);
@@ -153,7 +190,7 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
       console.log('Audio playback started');
     } catch (err) {
       console.error('Playback failed', err);
-      Alert.alert('Playback failed', (err as any).message);
+      showThemeAlert('Playback failed', (err as any).message);
     }
   };
 
@@ -183,12 +220,12 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
 
   const handleSave = async () => {
     if (!title.trim()) {
-      Alert.alert('Error', 'Title is required');
+      showThemeAlert('Error', 'Title is required');
       return;
     }
 
     if (dueDate && dueDate.getTime() <= Date.now()) {
-      Alert.alert('Error', 'Due date must be in the future');
+      showThemeAlert('Error', 'Due date must be in the future');
       return;
     }
 
@@ -222,7 +259,7 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
 
       navigation.goBack();
     } catch (error) {
-      Alert.alert('Error', 'Failed to save task');
+      showThemeAlert('Error', 'Failed to save task');
     } finally {
       setLoading(false);
     }
@@ -516,6 +553,15 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
           style={styles.saveBtn}
         />
       </ScrollView>
+
+      <ThemeModal
+        visible={modalVisible}
+        title={modalTitle}
+        message={modalMessage}
+        showCancel={modalShowCancel}
+        onConfirm={() => setModalVisible(false)}
+        onCancel={() => setModalVisible(false)}
+      />
     </SafeAreaView>
   );
 };
