@@ -48,7 +48,7 @@ export const DarkColors = {
   textTertiary: '#94A3B8',
   textInverse: '#0F172A',
   border: '#334155',
-  borderLight: '#1E293B',
+  borderLight: '#475569',
   error: '#F87171',
   errorLight: '#450A0A',
   warning: '#FBBF24',

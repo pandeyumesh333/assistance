@@ -10,7 +10,20 @@ import { HabitLog } from '../../models/health/HabitLog';
 import { DailyHealthScore } from '../../models/health/DailyHealthScore';
 import { ExerciseLibrary } from '../../models/health/ExerciseLibrary';
 import { WorkoutSession } from '../../models/health/WorkoutSession';
+import { ActivitySession } from '../../models/health/ActivitySession';
 import { calculateBMI, calculateNutritionTargets, calculateDailyHealthScore } from '../../services/health/healthCalculator';
+
+// --- Helpers ---
+const getLocalDateString = (date: Date | string | number) => {
+  const d = new Date(date);
+  // Adjust for IST offset (5.5 hours) if we want to be explicit, 
+  // but better to just use local methods which respect the environment's TZ 
+  // (which is IST for the user).
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 // --- Health Profile ---
 
@@ -69,17 +82,18 @@ export const updateHabitsList = async (req: Request, res: Response) => {
 // --- Daily Stats & Sync ---
 
 const updateDailyStats = async (userId: string, date: string) => {
-  const startOfDay = new Date(date);
-  startOfDay.setHours(0, 0, 0, 0);
-  const endOfDay = new Date(date);
-  endOfDay.setHours(23, 59, 59, 999);
+  // date is "YYYY-MM-DD"
+  // To avoid timezone shifts, we create the range from midnight to midnight in the environment's time
+  const startOfDay = new Date(date + 'T00:00:00');
+  const endOfDay = new Date(date + 'T23:59:59.999');
 
-  const [meals, water, sleep, exercises, sessions] = await Promise.all([
+  const [meals, water, sleep, exercises, sessions, activities] = await Promise.all([
     MealLog.find({ userId, timestamp: { $gte: startOfDay, $lte: endOfDay } }),
     WaterLog.find({ userId, timestamp: { $gte: startOfDay, $lte: endOfDay } }),
     SleepLog.find({ userId, createdAt: { $gte: startOfDay, $lte: endOfDay } }),
     ExerciseLog.find({ userId, timestamp: { $gte: startOfDay, $lte: endOfDay }, completed: true }),
     WorkoutSession.find({ userId, endTime: { $gte: startOfDay, $lte: endOfDay }, status: 'completed' }),
+    ActivitySession.find({ userId, endTime: { $gte: startOfDay, $lte: endOfDay }, status: 'completed' }),
   ]);
 
   const caloriesConsumed = meals.reduce((sum, m) => sum + m.calories, 0);
@@ -87,9 +101,11 @@ const updateDailyStats = async (userId: string, date: string) => {
   const waterConsumed = water.reduce((sum, w) => sum + w.quantityMl, 0);
   const sleepHours = sleep.reduce((sum, s) => sum + s.sleepDurationHours, 0);
   const exerciseMinutes = exercises.reduce((sum, e) => sum + e.durationMinutes, 0) + 
-                          sessions.reduce((sum, s) => sum + (s.durationMinutes || 0), 0);
+                          sessions.reduce((sum, s) => sum + (s.durationMinutes || 0), 0) +
+                          activities.reduce((sum, a) => sum + Math.round(a.durationSeconds / 60), 0);
   const caloriesBurned = exercises.reduce((sum, e) => sum + e.caloriesBurned, 0) +
-                         sessions.reduce((sum, s) => sum + (s.durationMinutes || 0) * 8, 0); // Approx 8 kcal/min for gym
+                         sessions.reduce((sum, s) => sum + (s.durationMinutes || 0) * 8, 0) +
+                         activities.reduce((sum, a) => sum + a.caloriesBurned, 0);
   const totalVolume = exercises.reduce((sum, e) => sum + (e.volume || 0), 0) +
                       sessions.reduce((sum, s) => sum + (s.totalVolume || 0), 0);
 
@@ -106,6 +122,15 @@ const updateDailyStats = async (userId: string, date: string) => {
     },
     { new: true, upsert: true }
   );
+
+  // We don't overwrite steps here if it was updated by syncSteps
+  // But we can add activity steps to it if they are not already included.
+  // For now, let's just make sure steps is at least the sum of activities.
+  const activitySteps = activities.reduce((sum, a) => sum + (a.steps || 0), 0);
+  if (stats.steps < activitySteps) {
+    stats.steps = activitySteps;
+    await stats.save();
+  }
 
   // Update Health Score
   const targets = await NutritionTargets.findOne({ userId });
@@ -142,7 +167,7 @@ export const addMeal = async (req: Request, res: Response) => {
     const meal = new MealLog({ ...req.body, userId });
     await meal.save();
     
-    const date = new Date(meal.timestamp).toISOString().split('T')[0];
+    const date = getLocalDateString(meal.timestamp);
     await updateDailyStats(userId, date);
     
     res.status(201).json(meal);
@@ -175,7 +200,7 @@ export const addWater = async (req: Request, res: Response) => {
     const water = new WaterLog({ ...req.body, userId });
     await water.save();
 
-    const date = new Date(water.timestamp).toISOString().split('T')[0];
+    const date = getLocalDateString(water.timestamp);
     await updateDailyStats(userId, date);
 
     res.status(201).json(water);
@@ -204,7 +229,7 @@ export const logSleep = async (req: Request, res: Response) => {
     });
     await sleep.save();
 
-    const date = end.toISOString().split('T')[0];
+    const date = getLocalDateString(end);
     await updateDailyStats(userId, date);
 
     res.status(201).json(sleep);
@@ -228,7 +253,7 @@ export const logExercise = async (req: Request, res: Response) => {
     });
     await exercise.save();
 
-    const date = new Date(exercise.timestamp).toISOString().split('T')[0];
+    const date = getLocalDateString(exercise.timestamp);
     await updateDailyStats(userId, date);
 
     res.status(201).json(exercise);
@@ -422,6 +447,107 @@ export const getPreviousWorkoutData = async (req: Request, res: Response) => {
     const lastWorkout = await WorkoutSession.findOne({ userId, status: 'completed' })
       .sort({ endTime: -1 });
     res.status(200).json(lastWorkout);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// --- Activity Sessions (Strava-like) ---
+
+export const startActivity = async (req: Request, res: Response) => {
+  try {
+    const userId = req.userId as string;
+    const { type, title, startTime } = req.body;
+    const activity = new ActivitySession({
+      userId,
+      type: type || 'walk',
+      title: title || `Morning ${type || 'Walk'}`,
+      startTime: startTime || new Date(),
+      status: 'active',
+    });
+    await activity.save();
+    res.status(201).json(activity);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const updateActivity = async (req: Request, res: Response) => {
+  try {
+    const userId = req.userId as string;
+    const { activityId } = req.params;
+    const activity = await ActivitySession.findOneAndUpdate(
+      { _id: activityId, userId },
+      { ...req.body },
+      { new: true }
+    );
+    res.status(200).json(activity);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const finishActivity = async (req: Request, res: Response) => {
+  try {
+    const userId = req.userId as string;
+    const { activityId } = req.params;
+    const { endTime, durationSeconds, distanceKm, steps, caloriesBurned, route } = req.body;
+
+    const activity = await ActivitySession.findOne({ _id: activityId, userId });
+    if (!activity) return res.status(404).json({ message: 'Activity not found' });
+
+    activity.endTime = endTime || new Date();
+    activity.durationSeconds = durationSeconds || activity.durationSeconds;
+    activity.distanceKm = distanceKm || activity.distanceKm;
+    activity.steps = steps || activity.steps;
+    activity.caloriesBurned = caloriesBurned || activity.caloriesBurned;
+    activity.route = route || activity.route;
+    activity.status = 'completed';
+    await activity.save();
+
+    const date = getLocalDateString(activity.endTime!);
+    await updateDailyStats(userId, date);
+
+    res.status(200).json(activity);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const getActivityHistory = async (req: Request, res: Response) => {
+  try {
+    const userId = req.userId as string;
+    const activities = await ActivitySession.find({ userId, status: 'completed' })
+      .sort({ startTime: -1 })
+      .limit(20);
+    res.status(200).json(activities);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// --- Step Syncing ---
+
+export const syncSteps = async (req: Request, res: Response) => {
+  try {
+    const userId = req.userId as string;
+    const { steps, date } = req.body; // steps is total for the day
+    
+    let stats = await DailyHealthStats.findOne({ userId, date });
+    if (!stats) {
+      stats = new DailyHealthStats({ userId, date, steps });
+    } else {
+      // Only update if current steps are higher (to avoid resetting)
+      if (steps > stats.steps) {
+        stats.steps = steps;
+      }
+    }
+    await stats.save();
+    
+    // Recalculate health score
+    await updateDailyStats(userId, date);
+    
+    res.status(200).json(stats);
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }

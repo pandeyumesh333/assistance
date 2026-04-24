@@ -228,7 +228,7 @@ export const HealthDashboard = ({ navigation }: any) => {
               icon="walk"
               color="#22C55E"
               progress={stepsProgress}
-              onPress={() => {}}
+              onPress={() => navigation.navigate('StepsTracker')}
             />
             <HealthStatCard
               title="Exercise"

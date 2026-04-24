@@ -10,6 +10,7 @@ import { ExerciseSearch } from '../modules/health/screens/ExerciseSearch';
 import { HabitTracker } from '../modules/health/screens/HabitTracker';
 import { AnalyticsScreen } from '../modules/health/screens/AnalyticsScreen';
 import { ActiveWorkout } from '../modules/health/screens/ActiveWorkout';
+import { StepsTracker } from '../modules/health/screens/StepsTracker';
 
 const Stack = createNativeStackNavigator();
 
@@ -26,6 +27,7 @@ export const HealthStack = () => {
       <Stack.Screen name="HabitTracker" component={HabitTracker} />
       <Stack.Screen name="Analytics" component={AnalyticsScreen} />
       <Stack.Screen name="ActiveWorkout" component={ActiveWorkout} />
+      <Stack.Screen name="StepsTracker" component={StepsTracker} />
     </Stack.Navigator>
   );
 };

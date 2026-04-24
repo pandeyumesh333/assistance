@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { healthAPI } from '../services/healthService';
+import { stepCounter } from '../services/StepCounterModule';
 
 interface HealthState {
   profile: any | null;
@@ -11,6 +12,8 @@ interface HealthState {
   activeWorkout: any | null;
   workoutHistory: any[];
   previousWorkout: any | null;
+  activeActivity: any | null;
+  activityHistory: any[];
   isLoading: boolean;
   error: string | null;
 
@@ -31,6 +34,14 @@ interface HealthState {
   fetchActiveWorkout: () => Promise<void>;
   fetchWorkoutHistory: (limit?: number) => Promise<void>;
   fetchPreviousWorkout: () => Promise<void>;
+
+  // Activity Sessions (GPS/Steps)
+  startActivity: (type: string, title?: string) => Promise<void>;
+  updateActiveActivity: (data: any) => Promise<void>;
+  finishActivity: (data: any) => Promise<void>;
+  fetchActivityHistory: () => Promise<void>;
+  syncSteps: (steps: number) => Promise<void>;
+  initStepCounter: () => Promise<void>;
 }
 
 export const useHealthStore = create<HealthState>((set, get) => ({
@@ -43,6 +54,8 @@ export const useHealthStore = create<HealthState>((set, get) => ({
   activeWorkout: null,
   workoutHistory: [],
   previousWorkout: null,
+  activeActivity: null,
+  activityHistory: [],
   isLoading: true,
   error: null,
 
@@ -212,5 +225,80 @@ export const useHealthStore = create<HealthState>((set, get) => ({
     } catch (error: any) {
       set({ error: error.message });
     }
+  },
+
+  // Activity Actions
+  startActivity: async (type: string, title?: string) => {
+    try {
+      set({ isLoading: true });
+      const res = await healthAPI.startActivity({ type, title });
+      set({ activeActivity: res.data, isLoading: false });
+    } catch (error: any) {
+      set({ error: error.message, isLoading: false });
+    }
+  },
+
+  updateActiveActivity: async (data: any) => {
+    try {
+      const active = get().activeActivity;
+      if (!active) return;
+      const res = await healthAPI.updateActivity(active._id, data);
+      set({ activeActivity: res.data });
+    } catch (error: any) {
+      console.error('Failed to update activity:', error);
+    }
+  },
+
+  finishActivity: async (data: any) => {
+    try {
+      const active = get().activeActivity;
+      if (!active) return;
+      set({ isLoading: true });
+      await healthAPI.finishActivity(active._id, data);
+      const date = new Date().toISOString().split('T')[0];
+      await get().fetchHealthData(date);
+      set({ activeActivity: null, isLoading: false });
+    } catch (error: any) {
+      set({ error: error.message, isLoading: false });
+    }
+  },
+
+  fetchActivityHistory: async () => {
+    try {
+      const res = await healthAPI.getActivityHistory();
+      set({ activityHistory: res.data });
+    } catch (error: any) {
+      set({ error: error.message });
+    }
+  },
+
+  syncSteps: async (steps: number) => {
+    try {
+      const date = new Date().toISOString().split('T')[0];
+      const res = await healthAPI.syncSteps(steps, date);
+      set({ dailyStats: res.data });
+    } catch (error: any) {
+      console.error('Failed to sync steps:', error);
+    }
+  },
+
+  initStepCounter: async () => {
+    await stepCounter.initialize();
+    const todaySteps = await stepCounter.getTodaySteps();
+    if (todaySteps > 0) {
+      get().syncSteps(todaySteps);
+    }
+    
+    stepCounter.setStepListener((steps) => {
+      // Update local state immediately for UI
+      set((state) => ({
+        dailyStats: state.dailyStats ? { ...state.dailyStats, steps } : { steps }
+      }));
+      
+      // Debounce sync to backend
+      if (steps % 10 === 0) {
+        get().syncSteps(steps);
+      }
+    });
   },
 }));

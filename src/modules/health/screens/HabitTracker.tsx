@@ -25,6 +25,7 @@ export const HabitTracker = ({ navigation }: any) => {
   const [isModalVisible, setModalVisible] = useState(false);
   const [newHabitLabel, setNewHabitLabel] = useState('');
   const [selectedIcon, setSelectedIcon] = useState('walk');
+  const [habitToDelete, setHabitToDelete] = useState<string | null>(null);
 
   const habitsList = profile?.habitsList || [
     { id: 'walkCompleted', label: '10k Steps Walked', icon: 'walk' },
@@ -59,22 +60,12 @@ export const HabitTracker = ({ navigation }: any) => {
     setModalVisible(false);
   };
 
-  const removeHabit = (habitId: string) => {
-    Alert.alert(
-      'Remove Habit',
-      'Are you sure you want to remove this habit from your daily list?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Remove', 
-          style: 'destructive',
-          onPress: async () => {
-            const updatedList = habitsList.filter((h: any) => h.id !== habitId);
-            await updateHabitsList(updatedList);
-          }
-        },
-      ]
-    );
+  const confirmDelete = async () => {
+    if (habitToDelete) {
+      const updatedList = habitsList.filter((h: any) => h.id !== habitToDelete);
+      await updateHabitsList(updatedList);
+      setHabitToDelete(null);
+    }
   };
 
   const dynamicStyles = StyleSheet.create({
@@ -203,6 +194,7 @@ export const HabitTracker = ({ navigation }: any) => {
                 style={{ flex: 1 }}
                 activeOpacity={0.7}
                 onPress={() => toggleHabit(habit.id)}
+                onLongPress={() => setHabitToDelete(habit.id)}
               >
                 <Card style={[styles.habitCard, isCompleted && { borderColor: colors.success + '30', backgroundColor: colors.success + '05' }]}>
                   <View style={[styles.iconBox, { backgroundColor: isCompleted ? colors.success + '20' : colors.primary + '10' }]}>
@@ -215,12 +207,6 @@ export const HabitTracker = ({ navigation }: any) => {
                     {isCompleted && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
                   </View>
                 </Card>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.removeBtn} 
-                onPress={() => removeHabit(habit.id)}
-              >
-                <Ionicons name="trash-outline" size={20} color={colors.error + '70'} />
               </TouchableOpacity>
             </View>
           );
@@ -283,6 +269,43 @@ export const HabitTracker = ({ navigation }: any) => {
                 onPress={addHabit}
               >
                 <Text style={{ color: '#FFFFFF', fontWeight: 'bold' }}>Add Habit</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        visible={!!habitToDelete}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setHabitToDelete(null)}
+      >
+        <View style={dynamicStyles.modalContainer}>
+          <View style={dynamicStyles.modalContent}>
+            <View style={{ alignItems: 'center', marginBottom: Spacing.lg }}>
+              <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: colors.error + '20', alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.md }}>
+                <Ionicons name="trash" size={30} color={colors.error} />
+              </View>
+              <Text style={dynamicStyles.modalTitle}>Remove Habit?</Text>
+              <Text style={{ color: colors.textSecondary, textAlign: 'center', fontSize: FontSizes.md }}>
+                Are you sure you want to remove this habit from your daily checklist?
+              </Text>
+            </View>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={[dynamicStyles.modalBtn, { backgroundColor: colors.background }]}
+                onPress={() => setHabitToDelete(null)}
+              >
+                <Text style={{ color: colors.textSecondary, fontWeight: 'bold' }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[dynamicStyles.modalBtn, { backgroundColor: colors.error }]}
+                onPress={confirmDelete}
+              >
+                <Text style={{ color: '#FFFFFF', fontWeight: 'bold' }}>Remove</Text>
               </TouchableOpacity>
             </View>
           </View>

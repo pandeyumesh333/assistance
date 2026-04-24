@@ -13,7 +13,10 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSMotionUsageDescription": "This app uses your motion data to track your steps and activity."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -25,7 +28,10 @@
       "package": "com.umesh8943123.lifeassistant",
       "permissions": [
         "RECEIVE_SMS",
-        "READ_SMS"
+        "READ_SMS",
+        "ACTIVITY_RECOGNITION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
       ]
     },
     "web": {
@@ -34,6 +40,8 @@
     "plugins": [
       "expo-secure-store",
       "@react-native-community/datetimepicker",
+      "expo-location",
+      "expo-sensors",
       [
         "expo-build-properties",
         {

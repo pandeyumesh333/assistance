@@ -23,4 +23,11 @@ export const healthAPI = {
   finishWorkout: (workoutId: string) => api.post(`/health/workout/${workoutId}`),
   getWorkoutHistory: (limit: number = 10) => api.get('/health/workout/history', { params: { limit } }),
   getPreviousWorkoutData: () => api.get('/health/workout/previous'),
+  
+  // Activities
+  startActivity: (data: any) => api.post('/health/activity/start', data),
+  updateActivity: (activityId: string, data: any) => api.put(`/health/activity/${activityId}`, data),
+  finishActivity: (activityId: string, data: any) => api.post(`/health/activity/${activityId}`, data),
+  getActivityHistory: () => api.get('/health/activity/history'),
+  syncSteps: (steps: number, date: string) => api.post('/health/sync/steps', { steps, date }),
 };

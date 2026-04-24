@@ -19,6 +19,11 @@ import {
   finishWorkout,
   getWorkoutHistory,
   getPreviousWorkoutData,
+  startActivity,
+  updateActivity,
+  finishActivity,
+  getActivityHistory,
+  syncSteps,
 } from '../../controllers/health/healthController';
 import { protect } from '../../middleware/auth';
 
@@ -42,5 +47,11 @@ router.route('/workout/start').post(startWorkout);
 router.route('/workout/history').get(getWorkoutHistory);
 router.route('/workout/previous').get(getPreviousWorkoutData);
 router.route('/workout/:workoutId').put(updateWorkout).post(finishWorkout);
+
+router.route('/activity/start').post(startActivity);
+router.route('/activity/history').get(getActivityHistory);
+router.route('/activity/:activityId').put(updateActivity).post(finishActivity);
+
+router.route('/sync/steps').post(syncSteps);
 
 export default router;

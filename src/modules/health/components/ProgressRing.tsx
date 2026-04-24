@@ -57,7 +57,9 @@ export const ProgressRing: React.FC<ProgressRingProps> = ({
         />
       </Svg>
       <View style={styles.textContainer}>
-        {label && <Text style={[styles.label, { color: colors.textPrimary }]}>{label}</Text>}
+        {label !== undefined && label !== null && (
+          <Text style={[styles.label, { color: colors.textPrimary }]}>{label}</Text>
+        )}
         {subLabel && <Text style={[styles.subLabel, { color: colors.textTertiary }]}>{subLabel}</Text>}
       </View>
     </View>
