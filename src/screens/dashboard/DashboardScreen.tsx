@@ -78,7 +78,7 @@ export const DashboardScreen = ({ navigation }: any) => {
         syncRecentSMS();
       }
     } catch (err) {
-      console.error('Failed to load dashboard data:', err);
+
     }
   }, [fetchTasks, fetchMeetings, fetchBalance, fetchTransactions, fetchHealthData]);
 
@@ -198,7 +198,7 @@ export const DashboardScreen = ({ navigation }: any) => {
               <Text style={dynamicStyles.userName}>{userName} ✨</Text>
             </View>
             <View 
-              style={[styles.testBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              style={[styles.headerIcon, { backgroundColor: colors.surface, borderColor: colors.border }]}
             >
               <Ionicons name="notifications-outline" size={24} color={colors.textTertiary} />
             </View>
@@ -335,7 +335,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.md,
     marginBottom: Spacing.lg,
   },
-  testBtn: {
+  headerIcon: {
     width: 44,
     height: 44,
     borderRadius: 22,

@@ -40,7 +40,7 @@ export const NotificationService = {
     
     // Create an Alarm channel for Android
     if (Platform.OS === 'android' && isAlarm) {
-      console.log('Configuring Android alarm channel...');
+
       await Notifications.setNotificationChannelAsync('alarm-channel', {
         name: 'Task Alarms',
         importance: Notifications.AndroidImportance.MAX,
@@ -95,7 +95,7 @@ export const NotificationService = {
       );
       return sound;
     } catch (e) {
-      console.error('Failed to play alarm sound', e);
+
       return null;
     }
   }

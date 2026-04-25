@@ -79,17 +79,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   restoreSession: async () => {
     try {
-      console.log('Restoring session with API_URL:', API_URL);
+
       const token = await SecureStore.getItemAsync('auth_token');
       if (!token) {
-        console.log('No token found');
+
         set({ isRestoring: false });
         return;
       }
 
-      console.log('Token found, fetching profile...');
+
       const { data } = await authAPI.getMe();
-      console.log('Profile fetched successfully');
+
       
       set({
         user: data,
@@ -98,7 +98,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isRestoring: false,
       });
     } catch (error: any) {
-      console.error('Session restoration failed:', error.message);
+
       // Even if it fails, we must stop the loading state
       set({
         user: null,

@@ -91,7 +91,7 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
 
     Voice.onSpeechError = (e: any) => {
       // In Expo Go, this will trigger as not supported
-      console.log('Speech recognition status:', e.error);
+
     };
 
     return () => {
@@ -122,7 +122,7 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
       try {
         await Voice.start('en-US');
       } catch (e) {
-        console.log('Native voice not available in Expo Go');
+
       }
     } catch (err) {
       showThemeAlert('Failed to start recording', (err as any).message);
@@ -159,11 +159,11 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
 
   const playRecording = async () => {
     if (!audioUri) {
-      console.log('No audio URI found');
+
       return;
     }
     try {
-      console.log('Attempting to play audio from:', audioUri);
+
       
       // Ensure the URI has file:// prefix if it's a local path and doesn't have it
       const playbackUri = audioUri.startsWith('http') || audioUri.startsWith('file://') 
@@ -187,7 +187,7 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
         { shouldPlay: true }
       );
       setSound(newSound);
-      console.log('Audio playback started');
+
     } catch (err) {
       console.error('Playback failed', err);
       showThemeAlert('Playback failed', (err as any).message);

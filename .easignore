@@ -1,0 +1,7 @@
+backend/
+scratch/
+node_modules/
+.expo/
+.git/
+android/
+ios/
