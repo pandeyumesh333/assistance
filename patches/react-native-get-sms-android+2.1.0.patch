@@ -1,0 +1,14 @@
+diff --git a/node_modules/react-native-get-sms-android/android/build.gradle b/node_modules/react-native-get-sms-android/android/build.gradle
+index 0de40fc..8fa317f 100644
+--- a/node_modules/react-native-get-sms-android/android/build.gradle
++++ b/node_modules/react-native-get-sms-android/android/build.gradle
+@@ -17,7 +17,8 @@ def safeExtGet(prop, fallback) {
+ }
+ 
+ android {
+-    compileSdkVersion safeExtGet('compileSdkVersion', 28)
++    namespace 'com.react'
++    compileSdkVersion safeExtGet('compileSdkVersion', 34)
+ 
+     defaultConfig {
+         minSdkVersion safeExtGet('minSdkVersion', 16)
