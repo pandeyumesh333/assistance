@@ -90,8 +90,13 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
     };
 
     Voice.onSpeechError = (e: any) => {
-      // In Expo Go, this will trigger as not supported
-
+      console.error('Speech Error:', e);
+      if (e.error?.message?.includes('No recognition service found')) {
+        showThemeAlert('Google App Missing', 'Voice recognition requires the Google app to be installed and enabled.');
+      } else {
+        showThemeAlert('Voice Error', e.error?.message || 'Failed to recognize speech');
+      }
+      setIsRecording(false);
     };
 
     return () => {

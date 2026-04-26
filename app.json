@@ -36,7 +36,9 @@
         "RECORD_AUDIO",
         "VIBRATE",
         "WAKE_LOCK",
-        "RECEIVE_BOOT_COMPLETED"
+        "RECEIVE_BOOT_COMPLETED",
+        "POST_NOTIFICATIONS",
+        "MODIFY_AUDIO_SETTINGS"
       ]
     },
     "web": {
@@ -65,7 +67,7 @@
             "enableShrinkResourcesInReleaseBuilds": true,
             "useAndroidX": true,
             "enableJetifier": true,
-            "extraProguardRules": "-keep class com.react.** { *; }\n-keep class com.reactnativecommunity.voice.** { *; }\n-keep class com.facebook.react.turbomodule.** { *; }"
+            "extraProguardRules": "-keep class com.react.** { *; }\n-keep class com.wenkesj.voice.** { *; }\n-keep class com.facebook.react.turbomodule.** { *; }\n-keep class com.google.android.gms.internal.** { *; }\n-keep class expo.modules.notifications.** { *; }\n-keep class expo.modules.av.** { *; }"
           }
         }
       ],
