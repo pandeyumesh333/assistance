@@ -10,6 +10,7 @@ export const useNotifications = () => {
   const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
   const notificationListener = useRef<Notifications.EventSubscription | null>(null);
   const responseListener = useRef<Notifications.EventSubscription | null>(null);
+  const soundRef = useRef<Audio.Sound | null>(null);
   const { isAuthenticated } = useAuthStore();
 
   useEffect(() => {
@@ -25,19 +26,31 @@ export const useNotifications = () => {
     notificationListener.current =
       Notifications.addNotificationReceivedListener(async (notification) => {
         const { data } = notification.request.content;
-        const isAlarm = notification.request.content.title?.includes('ALARM');
+        const isAlarm = data?.isAlarm || notification.request.content.title?.includes('ALARM');
         
         if (data?.type === 'task' && isAlarm) {
           try {
-            console.log('Playing Game of Thrones Alarm...');
+            // Stop existing sound if any
+            if (soundRef.current) {
+              await soundRef.current.stopAsync();
+              await soundRef.current.unloadAsync();
+              soundRef.current = null;
+            }
+
+            console.log('🔔 Alarm Triggered: Playing GOT Theme...');
             const { sound } = await Audio.Sound.createAsync(
               require('../../assets/sounds/alarm.mp3'),
               { shouldPlay: true, volume: 1.0, isLooping: true }
             );
+            soundRef.current = sound;
+
             // Ring for 30 seconds
             setTimeout(async () => {
-              await sound.stopAsync();
-              await sound.unloadAsync();
+              if (soundRef.current) {
+                await soundRef.current.stopAsync();
+                await soundRef.current.unloadAsync();
+                soundRef.current = null;
+              }
             }, 30000);
           } catch (e) {
             console.error('Failed to play alarm sound', e);

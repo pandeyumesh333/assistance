@@ -1,5 +1,5 @@
 diff --git a/node_modules/@react-native-voice/voice/android/build.gradle b/node_modules/@react-native-voice/voice/android/build.gradle
-index 8fce879..f23a1ec 100644
+index 8fce879..59c7a2f 100644
 --- a/node_modules/@react-native-voice/voice/android/build.gradle
 +++ b/node_modules/@react-native-voice/voice/android/build.gradle
 @@ -20,7 +20,8 @@ def DEFAULT_TARGET_SDK_VERSION = 28
@@ -12,3 +12,11 @@ index 8fce879..f23a1ec 100644
      buildToolsVersion rootProject.hasProperty('buildToolsVersion') ? rootProject.buildToolsVersion : DEFAULT_BUILD_TOOLS_VERSION
  
      defaultConfig {
+@@ -62,6 +63,6 @@ def supportVersion = rootProject.hasProperty('supportLibVersion') ? rootProject.
+ dependencies {
+     implementation fileTree(dir: 'libs', include: ['*.jar'])
+     testImplementation 'junit:junit:4.12'
+-    implementation "com.android.support:appcompat-v7:${supportVersion}"
++    implementation "androidx.appcompat:appcompat:1.6.1"
+     implementation 'com.facebook.react:react-native:+'
+ }

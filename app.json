@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "newArchEnabled": false,
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -15,7 +15,8 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSMotionUsageDescription": "This app uses your motion data to track your steps and activity."
+        "NSMotionUsageDescription": "This app uses your motion data to track your steps and activity.",
+        "NSMicrophoneUsageDescription": "This app uses the microphone for voice-to-text task creation."
       }
     },
     "android": {
@@ -31,7 +32,11 @@
         "READ_SMS",
         "ACTIVITY_RECOGNITION",
         "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
+        "ACCESS_COARSE_LOCATION",
+        "RECORD_AUDIO",
+        "VIBRATE",
+        "WAKE_LOCK",
+        "RECEIVE_BOOT_COMPLETED"
       ]
     },
     "web": {
@@ -43,15 +48,34 @@
       "expo-location",
       "expo-sensors",
       [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#4F46E5",
+          "sounds": [
+            "./assets/sounds/alarm.mp3"
+          ]
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "android": {
             "enableProguardInReleaseBuilds": true,
-            "enableShrinkResourcesInReleaseBuilds": true
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "useAndroidX": true,
+            "enableJetifier": true,
+            "extraProguardRules": "-keep class com.react.** { *; }\n-keep class com.reactnativecommunity.voice.** { *; }\n-keep class com.facebook.react.turbomodule.** { *; }"
           }
         }
       ],
-      "@react-native-voice/voice",
+      [
+        "@react-native-voice/voice",
+        {
+          "microphonePermission": "Allow Life Assistant to access the microphone for voice-to-text tasks."
+        }
+      ],
+      "./plugins/withAndroidXResolution",
       "expo-font"
     ],
     "extra": {

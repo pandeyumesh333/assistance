@@ -13,8 +13,6 @@ try {
   // 2. Remove bloat packages
   const bloat = [
     'expo-dev-client', 
-    'expo-task-manager', 
-    'expo-background-fetch', 
     'react-native-chart-kit', 
     'react-native-svg'
   ];

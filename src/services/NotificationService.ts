@@ -40,12 +40,12 @@ export const NotificationService = {
     
     // Create an Alarm channel for Android
     if (Platform.OS === 'android' && isAlarm) {
-
       await Notifications.setNotificationChannelAsync('alarm-channel', {
         name: 'Task Alarms',
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 1000, 500, 1000, 500, 1000, 500, 1000, 500, 1000],
         lightColor: '#EF4444',
+        sound: 'alarm', // Matches asset name in res/raw (no extension)
         lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
         audioAttributes: {
           usage: Notifications.AndroidAudioUsage.ALARM,
@@ -58,11 +58,10 @@ export const NotificationService = {
       content: {
         title: isAlarm ? `⏰ ALARM: ${task.title}` : `🔔 Task Reminder: ${task.title}`,
         body: task.description || (isAlarm ? 'Wake up! Task is due!' : 'You have a task due soon!'),
-        data: { taskId: task._id, type: 'task' },
-        sound: true, 
+        data: { taskId: task._id, type: 'task', isAlarm },
+        sound: isAlarm ? 'alarm' : true, 
         vibrate: isAlarm ? [0, 1000, 500, 1000, 500, 1000, 500, 1000] : [0, 250, 250, 250],
         priority: isAlarm ? Notifications.AndroidNotificationPriority.MAX : Notifications.AndroidNotificationPriority.HIGH,
-        // For some versions, channelId is at the top level of content
         // @ts-ignore
         channelId: isAlarm ? 'alarm-channel' : 'default',
         categoryIdentifier: isAlarm ? 'alarm' : undefined,

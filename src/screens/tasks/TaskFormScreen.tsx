@@ -398,6 +398,11 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
               {isRecording ? 'Stop Recording' : 'Record Voice Note'}
             </Text>
           </TouchableOpacity>
+          {isRecording && (
+            <Text style={{ color: '#EF4444', fontSize: 12, fontWeight: '600' }}>
+              ● Listening...
+            </Text>
+          )}
           {audioUri && !isRecording && (
             <TouchableOpacity style={dynamicStyles.playBtn} onPress={playRecording}>
               <Ionicons name="play" size={20} color={colors.primary} />
