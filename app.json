@@ -38,7 +38,9 @@
         "WAKE_LOCK",
         "RECEIVE_BOOT_COMPLETED",
         "POST_NOTIFICATIONS",
-        "MODIFY_AUDIO_SETTINGS"
+        "MODIFY_AUDIO_SETTINGS",
+        "SCHEDULE_EXACT_ALARM",
+        "USE_EXACT_ALARM"
       ]
     },
     "web": {
